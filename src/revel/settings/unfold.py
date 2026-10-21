@@ -515,6 +515,21 @@ UNFOLD = {
                         "icon": "unsubscribe",
                         "link": reverse_lazy("admin:notifications_emailsuppression_changelist"),
                     },
+                    {
+                        "title": _("SMS Opt-outs"),
+                        "icon": "sms_failed",
+                        "link": reverse_lazy("admin:sms_smsoptout_changelist"),
+                    },
+                    {
+                        "title": _("SMS Log"),
+                        "icon": "sms",
+                        "link": reverse_lazy("admin:sms_smslog_changelist"),
+                    },
+                    {
+                        "title": _("Phone Verifications"),
+                        "icon": "phonelink_ring",
+                        "link": reverse_lazy("admin:sms_phoneverification_changelist"),
+                    },
                 ],
             },
             {

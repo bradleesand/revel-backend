@@ -516,6 +516,8 @@ EXPORT_RULES: dict[str, ExportRule] = {
     "questionnaireevaluation_set": ExportRule(include=False, reason="evaluations authored about other users"),
     # --- telegram ---
     "telegram_users": ExportRule(include=True),
+    # --- sms ---
+    "phone_verification": ExportRule(include=False, reason="transient phone verification code"),
     # --- hidden relations (``related_name='+'``) -------------------------------
     # These have no accessor on the user (they all report ``'+'``), so they are
     # keyed ``<app_label>.<model>.<field>`` and can only ever be excluded — but

@@ -7,7 +7,13 @@ import structlog
 from django.conf import settings
 
 from accounts.models import RevelUser
-from notifications.enums import MANDATORY_TYPES, TRANSACTIONAL_TYPES, DeliveryChannel, NotificationType
+from notifications.enums import (
+    MANDATORY_TYPES,
+    SMS_ELIGIBLE_TYPES,
+    TRANSACTIONAL_TYPES,
+    DeliveryChannel,
+    NotificationType,
+)
 from notifications.models import Notification, NotificationPreference
 
 logger = structlog.get_logger(__name__)
@@ -141,6 +147,12 @@ def determine_delivery_channels(user: RevelUser, notification_type: str) -> list
     # so we never enqueue a delivery that can't succeed (issue #8).
     if not settings.FEATURE_TELEGRAM:
         channels = [c for c in channels if c != DeliveryChannel.TELEGRAM]
+
+    # SMS is an allowlist (paid, carrier-filtered): drop it for every other type — including
+    # MANDATORY_TYPES, which get_channels_for_notification_type never lets users opt out of —
+    # and whenever the integration is off.
+    if not settings.FEATURE_SMS or notification_type not in SMS_ELIGIBLE_TYPES:
+        channels = [c for c in channels if c != DeliveryChannel.SMS]
 
     # On a digest cadence, only the in-app notification is created now; the email is
     # bundled into the periodic digest sweep. Mandatory and transactional types (receipts,

@@ -1,6 +1,6 @@
 # Notifications
 
-Revel has a multi-channel notification system that delivers messages through **in-app notifications**, **email**, and **Telegram**. The system is designed to be extensible, user-configurable, and respectful of user preferences.
+Revel has a multi-channel notification system that delivers messages through **in-app notifications**, **email**, **Telegram**, and (opt-in) **SMS**. The system is designed to be extensible, user-configurable, and respectful of user preferences.
 
 ## Architecture
 
@@ -10,13 +10,16 @@ flowchart LR
     Dispatcher --> InApp["In-App Channel"]
     Dispatcher --> Email["Email Channel"]
     Dispatcher --> Telegram["Telegram Channel"]
+    Dispatcher --> SMS["SMS Channel"]
 
     InApp --> DB[(Database)]
     Email --> Celery["Celery Worker"]
     Telegram --> Celery
+    SMS --> Celery
 
     Celery --> SMTP["SMTP Server"]
     Celery --> TGBot["Telegram Bot API"]
+    Celery --> SMSProvider["SMS provider (Twilio)"]
 
     Prefs["User Preferences"] -.->|"filter channels"| Dispatcher
 ```
@@ -28,6 +31,7 @@ flowchart LR
 | **In-App** | Immediate (database) | `notifications/templates/notifications/in_app/` | Stored as model instances, queryable via API |
 | **Email** | Async (Celery) | Django email templates | Supports HTML and plain text |
 | **Telegram** | Async (Celery) | `notifications/templates/notifications/telegram/` | Markdown-formatted messages via bot |
+| **SMS** | Async (Celery) | `notifications/templates/notifications/sms/` | Plain text, one or two GSM-7 segments. Opt-in per deployment (`FEATURE_SMS`), allow-listed types only, verified phone required. See [SMS channel](#sms-channel) |
 
 !!! tip "User preferences control everything"
     Users can configure which channels receive which notification types. The dispatcher respects these preferences before sending. Notifications also support **digest mode** for batching.
@@ -217,6 +221,37 @@ Notifications are triggered from the service layer via Django signals and direct
 !!! info "Event times render in the event's timezone (1.64.0)"
     Event times in notifications and emails are always rendered in the **event's own
     timezone** (via `format_event_datetime`), not the recipient's or the server's.
+
+## SMS channel
+
+SMS is deliberately **not** a peer of email: every segment costs money and carriers filter
+chatty senders, so it is gated three ways.
+
+- **Deployment opt-in** — `FEATURE_SMS` (default `False`) plus a provider in `settings/sms.py`.
+  `SMS_BACKEND` is a dotted path to a `send(*, to, body) -> str` callable; `SMS_DRY_RUN=True`
+  swaps in the console backend (logs instead of sending, same as `EMAIL_DRY_RUN`). The Twilio
+  backend prefers a Messaging Service (`TWILIO_MESSAGING_SERVICE_SID`) so STOP/START handling
+  and geo-permissions live at the provider.
+- **Type allowlist** — only `SMS_ELIGIBLE_TYPES` (`notifications/enums.py`: event reminders,
+  ticket created, event cancelled, waitlist spot available) ever reach the channel. The
+  dispatcher strips SMS from every other type, including the mandatory ones that force in-app
+  and email, so a user enabling SMS globally never receives terms notices or receipts by text.
+  Each eligible type ships its own `sms/<type>.txt` template, written for the medium (plain
+  text, ASCII punctuation, a single full-domain link); a test asserts GSM-7 and ≤ 2 segments.
+- **Verified phone** — `RevelUser.phone_number` is only ever set through the verification flow
+  (`POST /api/sms/phone/request-code` → code texted → `POST /api/sms/phone/verify`), which stamps
+  `phone_verified_at`. Codes are 6 digits, expire after `SMS_OTP_EXPIRATION_MINUTES`, allow
+  `SMS_OTP_MAX_ATTEMPTS` guesses, and requests are rate-limited and restricted to
+  `SMS_ALLOWED_COUNTRY_PREFIXES` (default `+1`) to blunt SMS-pumping fraud. After a successful
+  verification the user receives a confirmation text with the STOP/HELP wording carriers expect.
+
+Delivery runs through `sms.tasks.send_sms_task`, the single send path for notifications,
+verification codes and confirmations. It enforces the `SmsOptOut` list (fed by provider
+"opted out" errors; a STOP webhook can feed it too), the `SMS_MONTHLY_LIMIT` bill-shock cap
+(admin Pushover ping when hit), retries transient provider errors with backoff, writes an
+`SmsLog` row per send (no body stored), and reports back to `NotificationDelivery` through the
+same allow-listed callback mechanism as Telegram, storing the provider message id in
+`delivery.metadata`.
 
 !!! warning "`FEATURE_TELEGRAM` strips the Telegram channel platform-wide"
     When `FEATURE_TELEGRAM` is off (self-host without a bot), the dispatcher strips the

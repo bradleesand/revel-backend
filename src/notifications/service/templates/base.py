@@ -129,6 +129,29 @@ class NotificationTemplate(ABC):
         template_name = f"notifications/telegram/{notification.notification_type}.md"
         return render_to_string(template_name, self._get_template_context(notification))
 
+    # ==================== SMS Channel ====================
+
+    def get_sms_body(self, notification: Notification) -> str:
+        """Get plain-text body for SMS.
+
+        By default, renders the template at:
+        notifications/sms/{notification_type}.txt
+
+        SMS templates are written for the medium (one or two GSM-7 segments, a single
+        full-domain link) rather than derived from the in-app or Telegram bodies.
+        Surrounding whitespace is stripped and internal blank lines collapsed.
+
+        Args:
+            notification: The notification instance
+
+        Returns:
+            Plain text body string
+        """
+        template_name = f"notifications/sms/{notification.notification_type}.txt"
+        rendered = render_to_string(template_name, self._get_template_context(notification))
+        lines = [line.strip() for line in rendered.splitlines()]
+        return "\n".join(line for line in lines if line)
+
     # ==================== Helper Methods ====================
 
     def _get_template_context(self, notification: Notification) -> dict[str, t.Any]:

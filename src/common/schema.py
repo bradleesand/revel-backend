@@ -142,6 +142,7 @@ class FeaturesSchema(Schema):
 
     organization_creation: bool
     telegram: bool
+    sms: bool
     llm_evaluation: bool
     referral_applications: bool
     #: Whether the OAuth 2.1 / OIDC provider is mounted, so clients can hide the developer

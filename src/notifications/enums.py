@@ -181,6 +181,21 @@ class DeliveryChannel(TextChoices):
     IN_APP = "in_app"
     EMAIL = "email"
     TELEGRAM = "telegram"
+    SMS = "sms"
+
+
+# Types that may go out by SMS. Every segment costs money and carriers filter chatty
+# senders, so SMS is an allowlist rather than a peer of email: the dispatcher strips it
+# for any other type, including the MANDATORY_TYPES that force in-app + email. Each
+# entry must ship notifications/sms/<type>.txt (asserted by the sms template test).
+SMS_ELIGIBLE_TYPES: frozenset[str] = frozenset(
+    {
+        NotificationType.EVENT_REMINDER,
+        NotificationType.TICKET_CREATED,
+        NotificationType.EVENT_CANCELLED,
+        NotificationType.WAITLIST_SPOT_AVAILABLE,
+    }
+)
 
 
 class DeliveryStatus(TextChoices):

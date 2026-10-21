@@ -65,6 +65,9 @@ class RevelUser(ExifStripMixin, StripeConnectMixin, AbstractUser):
     phone_number = models.CharField(
         max_length=20, unique=True, null=True, blank=True, validators=[validate_phone_number], help_text="Phone number"
     )
+    phone_verified_at = models.DateTimeField(
+        null=True, blank=True, help_text="When phone_number was confirmed by SMS code; SMS delivery requires it"
+    )
     preferred_name = models.CharField(db_index=True, max_length=255, blank=True, help_text="Preferred name")
     pronouns = models.CharField(max_length=100, blank=True, help_text="Pronouns")
     email_verified = models.BooleanField(default=False)

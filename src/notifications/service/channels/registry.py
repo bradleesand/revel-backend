@@ -4,12 +4,14 @@ from notifications.enums import DeliveryChannel
 from notifications.service.channels.base import NotificationChannel
 from notifications.service.channels.email import EmailChannel
 from notifications.service.channels.in_app import InAppChannel
+from notifications.service.channels.sms import SmsChannel
 from notifications.service.channels.telegram import TelegramChannel
 
 CHANNEL_INSTANCES: dict[str, NotificationChannel] = {
     DeliveryChannel.IN_APP: InAppChannel(),
     DeliveryChannel.EMAIL: EmailChannel(),
     DeliveryChannel.TELEGRAM: TelegramChannel(),
+    DeliveryChannel.SMS: SmsChannel(),
 }
 
 

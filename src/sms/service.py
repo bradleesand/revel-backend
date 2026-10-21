@@ -1,0 +1,170 @@
+"""Phone verification flow, opt-out registry and the backend dispatch for sending."""
+
+import typing as t
+from datetime import timedelta
+
+import structlog
+from django.conf import settings
+from django.db import transaction
+from django.db.models import Sum
+from django.utils import timezone, translation
+from django.utils.module_loading import import_string
+from django.utils.translation import gettext as _
+from ninja.errors import HttpError
+
+from accounts.models import RevelUser
+from sms.models import PhoneVerification, SmsLog, SmsOptOut
+from sms.schema import PhoneStatusSchema
+from sms.utils import is_e164, mask_phone_number, normalize_phone_number
+
+logger = structlog.get_logger(__name__)
+
+
+# ==================== Sending ====================
+
+
+def send_sms(*, to: str, body: str) -> str:
+    """Send through the configured ``SMS_BACKEND``; returns the provider message id."""
+    backend: t.Callable[..., str] = import_string(settings.SMS_BACKEND)
+    return backend(to=to, body=body)
+
+
+def is_opted_out(phone_number: str) -> bool:
+    """True when the number is on the opt-out list."""
+    return SmsOptOut.objects.filter(phone_number=phone_number).exists()
+
+
+def record_opt_out(phone_number: str, reason: str) -> None:
+    """Add ``phone_number`` to the opt-out list (idempotent)."""
+    _, created = SmsOptOut.objects.get_or_create(phone_number=phone_number, defaults={"reason": reason})
+    if created:
+        logger.info("sms_opt_out_recorded", phone_number=phone_number, reason=reason)
+
+
+def clear_opt_out(phone_number: str) -> None:
+    """Remove ``phone_number`` from the opt-out list (START / re-subscribe)."""
+    SmsOptOut.objects.filter(phone_number=phone_number).delete()
+
+
+def segments_sent_this_month() -> int:
+    """Segments logged since the first of the current month (UTC), for ``SMS_MONTHLY_LIMIT``."""
+    now = timezone.now()
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    total = SmsLog.objects.filter(created_at__gte=month_start).aggregate(total=Sum("segments"))["total"]
+    return int(total or 0)
+
+
+# ==================== Phone verification ====================
+
+
+def _validated_number(raw: str) -> str:
+    """Normalise and validate a user-supplied number for verification.
+
+    Raises:
+        HttpError: 400 when not E.164 or outside ``SMS_ALLOWED_COUNTRY_PREFIXES``.
+    """
+    number = normalize_phone_number(raw)
+    if not is_e164(number):
+        raise HttpError(400, str(_("Enter the number in international format, e.g. +15551234567.")))
+    if not any(number.startswith(prefix) for prefix in settings.SMS_ALLOWED_COUNTRY_PREFIXES):
+        raise HttpError(400, str(_("SMS verification is not available for numbers in that country.")))
+    return number
+
+
+def request_code(user: RevelUser, raw_number: str) -> None:
+    """Start (or restart) verification of ``raw_number`` for ``user`` and text the code.
+
+    Raises:
+        HttpError: 400 for a bad/unsupported/taken/opted-out number or one already
+            verified on this account; 429 inside the resend cooldown.
+    """
+    from sms.tasks import send_sms_task
+
+    number = _validated_number(raw_number)
+
+    if user.phone_number == number and user.phone_verified_at:
+        raise HttpError(400, str(_("This number is already verified on your account.")))
+    if RevelUser.objects.filter(phone_number=number).exclude(pk=user.pk).exists():
+        raise HttpError(400, str(_("This number is already in use.")))
+    if is_opted_out(number):
+        raise HttpError(400, str(_("This number has opted out of texts. Reply START to our number first.")))
+
+    existing = PhoneVerification.objects.filter(user=user).first()
+    cooldown = timedelta(seconds=settings.SMS_OTP_RESEND_COOLDOWN_SECONDS)
+    if existing and existing.used_at is None and timezone.now() - existing.updated_at < cooldown:
+        raise HttpError(429, str(_("Please wait a moment before requesting another code.")))
+
+    with transaction.atomic():
+        PhoneVerification.objects.filter(user=user).delete()
+        verification = PhoneVerification.objects.create(user=user, phone_number=number)
+
+    with translation.override(getattr(user, "language", settings.LANGUAGE_CODE)):
+        body = str(
+            _("Your {sender} verification code is {code}. It expires in {minutes} minutes.").format(
+                sender=settings.SMS_SENDER_NAME,
+                code=verification.code,
+                minutes=settings.SMS_OTP_EXPIRATION_MINUTES,
+            )
+        )
+    transaction.on_commit(lambda: send_sms_task.delay(number, body=body, purpose=SmsLog.Purpose.VERIFICATION))
+    logger.info("sms_verification_requested", user_id=str(user.id), phone_number=mask_phone_number(number))
+
+
+def verify_code(user: RevelUser, code: str) -> RevelUser:
+    """Confirm the code; on success set ``phone_number`` + ``phone_verified_at`` and text a confirmation.
+
+    Raises:
+        HttpError: 400 when there is no usable pending verification or the code is wrong.
+    """
+    from sms.tasks import send_sms_task
+
+    verification = PhoneVerification.objects.filter(user=user).first()
+    if verification is None or not verification.is_usable():
+        raise HttpError(400, str(_("No valid verification in progress. Request a new code.")))
+
+    if verification.code != code:
+        verification.attempts += 1
+        verification.save(update_fields=["attempts", "updated_at"])
+        logger.warning("sms_verification_bad_code", user_id=str(user.id), attempts=verification.attempts)
+        raise HttpError(400, str(_("Incorrect code.")))
+
+    now = timezone.now()
+    with transaction.atomic():
+        user.phone_number = verification.phone_number
+        user.phone_verified_at = now
+        user.save(update_fields=["phone_number", "phone_verified_at"])
+        verification.used_at = now
+        verification.save(update_fields=["used_at", "updated_at"])
+
+    # Carrier/TCPA expectation: confirm the opt-in and state how to leave.
+    with translation.override(getattr(user, "language", settings.LANGUAGE_CODE)):
+        body = str(
+            _(
+                "Your number is verified for {sender} texts. Msg & data rates may apply. "
+                "Reply STOP to opt out, HELP for help."
+            ).format(sender=settings.SMS_SENDER_NAME)
+        )
+    number = verification.phone_number
+    transaction.on_commit(lambda: send_sms_task.delay(number, body=body, purpose=SmsLog.Purpose.CONFIRMATION))
+    logger.info("sms_verification_confirmed", user_id=str(user.id), phone_number=mask_phone_number(number))
+    return user
+
+
+def remove_phone(user: RevelUser) -> None:
+    """Drop the user's number (verified or not) and any pending verification."""
+    PhoneVerification.objects.filter(user=user).delete()
+    if user.phone_number or user.phone_verified_at:
+        user.phone_number = None
+        user.phone_verified_at = None
+        user.save(update_fields=["phone_number", "phone_verified_at"])
+    logger.info("sms_phone_removed", user_id=str(user.id))
+
+
+def phone_status(user: RevelUser) -> PhoneStatusSchema:
+    """Masked number + verification state for the account page."""
+    pending = PhoneVerification.objects.filter(user=user).first()
+    return PhoneStatusSchema(
+        phone_number=mask_phone_number(user.phone_number) if user.phone_number else None,
+        verified=user.phone_verified_at is not None,
+        pending_verification=pending is not None and pending.is_usable(),
+    )

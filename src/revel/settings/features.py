@@ -8,6 +8,8 @@ from decouple import config
 FEATURE_LLM_EVALUATION: bool = config("FEATURE_LLM_EVALUATION", default=True, cast=bool)
 FEATURE_MALWARE_SCAN: bool = config("FEATURE_MALWARE_SCAN", default=True, cast=bool)
 FEATURE_TELEGRAM: bool = config("FEATURE_TELEGRAM", default=True, cast=bool)
+# Opt-in (ADR-0008): inert without an SMS provider configured, see settings/sms.py.
+FEATURE_SMS: bool = config("FEATURE_SMS", default=False, cast=bool)
 FEATURE_ORGANIZATION_CREATION: bool = config("FEATURE_ORGANIZATION_CREATION", default=True, cast=bool)
 
 # Observability is a deployment capability, so it lives here under the FEATURE_ prefix.

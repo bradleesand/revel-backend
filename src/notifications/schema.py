@@ -13,7 +13,7 @@ from notifications.enums import NotificationType
 from notifications.models import EmailSuppression, NotificationPreference
 from notifications.service.email_policy import suppression_for
 
-ChannelType = t.Literal["in_app", "email", "telegram"]
+ChannelType = t.Literal["in_app", "email", "telegram", "sms"]
 
 
 class NotificationTypeSettings(Schema):
@@ -25,7 +25,7 @@ class NotificationTypeSettings(Schema):
     """
 
     enabled: bool = True
-    channels: list[ChannelType] = Field(default_factory=list, max_length=3)
+    channels: list[ChannelType] = Field(default_factory=list, max_length=4)
 
 
 class NotificationSchema(Schema):
@@ -106,7 +106,7 @@ class UpdateNotificationPreferenceSchema(Schema):
     """Schema for updating notification preferences."""
 
     silence_all_notifications: bool | None = None
-    enabled_channels: list[ChannelType] | None = Field(None, max_length=3)
+    enabled_channels: list[ChannelType] | None = Field(None, max_length=4)
     digest_frequency: str | None = None
     digest_send_time: time | None = None
     event_reminders_enabled: bool | None = None

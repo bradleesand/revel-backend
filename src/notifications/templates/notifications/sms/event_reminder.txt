@@ -1,0 +1,3 @@
+{% load i18n %}{% autoescape off %}{% if context.days_until == 1 %}{% blocktranslate with event=context.event_name %}Reminder: {{ event }} is tomorrow.{% endblocktranslate %}{% else %}{% blocktranslate with event=context.event_name days=context.days_until %}Reminder: {{ event }} is in {{ days }} days.{% endblocktranslate %}{% endif %}
+{{ context.event_start_formatted }}{% if context.event_location %} - {{ context.event_location }}{% endif %}
+{{ context.event_url }}{% endautoescape %}

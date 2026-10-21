@@ -82,6 +82,7 @@ INSTALLED_APPS = [
     "polls",
     "moderation",
     "telegram",
+    "sms",
     "geo",
     "notifications",
     "wallet",

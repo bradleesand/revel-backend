@@ -2,7 +2,6 @@
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
-#
 msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
@@ -87,6 +86,7 @@ msgstr "e-mail enviado."
 msgid "enrolled immediately (account exists)."
 msgstr "inscrito imediatamente (a conta já existe)."
 
+#, python-brace-format
 msgid "existing code {} kept; the typed code was ignored."
 msgstr "código existente {} mantido; o código introduzido foi ignorado."
 
@@ -256,6 +256,7 @@ msgstr "A palavra-passe deve conter pelo menos uma letra minúscula."
 msgid "Password must contain at least one digit."
 msgstr "A palavra-passe deve conter pelo menos um algarismo."
 
+#, python-brace-format
 msgid ""
 "Password must contain at least one special character (!@#$%^&*(),.?\":{}|<>)"
 "[]=."
@@ -263,7 +264,7 @@ msgstr ""
 "A palavra-passe deve conter pelo menos um caráter especial (!@#$%^&*(),.?\":"
 "{}|<>)[]=."
 
-#, python-format
+#, python-format, python-brace-format
 msgid ""
 "Your password must be at least %(min_length)d characters long, contain at "
 "least one uppercase letter, one lowercase letter, one digit, and one special "
@@ -359,12 +360,14 @@ msgstr "Já tens uma candidatura pendente."
 msgid "This application has already been decided."
 msgstr "Já foi tomada uma decisão sobre esta candidatura."
 
+#, python-brace-format
 msgid "{} already has an active referral code."
 msgstr "{} já tem um código de referência ativo."
 
 msgid "This email is permanently blocked from the referral program."
 msgstr "Este email está bloqueado permanentemente do programa de referência."
 
+#, python-brace-format
 msgid "This email already has an approved invite awaiting signup (code {})."
 msgstr ""
 "Este e-mail já tem um convite aprovado à espera de registo (código {})."
@@ -1144,8 +1147,8 @@ msgstr ""
 #, python-brace-format
 msgid ""
 "Invoices to customers with a {country} VAT ID must be sent as e-invoices "
-"through {system}. Revel won't create those. Issue this one from your "
-"e-invoicing software; invoices to everyone else work as usual."
+"through {system}. Revel won't create those. Issue this one from your e-"
+"invoicing software; invoices to everyone else work as usual."
 msgstr ""
 "As faturas a clientes com número de IVA deste país ({country}) têm de ser "
 "enviadas como faturas eletrónicas através de {system}. A Revel não as cria. "
@@ -1155,8 +1158,8 @@ msgstr ""
 #, python-brace-format
 msgid ""
 "Invoices to business customers of organizers in {country} must be issued "
-"through {system}. Revel won't create those. Issue this one from your "
-"e-invoicing software; invoices to consumers work as usual."
+"through {system}. Revel won't create those. Issue this one from your e-"
+"invoicing software; invoices to consumers work as usual."
 msgstr ""
 "As faturas a clientes empresariais de organizadores deste país ({country}) "
 "têm de ser emitidas através de {system}. A Revel não as cria. Emite esta no "
@@ -1271,9 +1274,9 @@ msgid ""
 "documents, issue them from your own software, a certified e-invoicing "
 "provider or AADE's free tools (timologio, myDATAapp). Invoices to Greek "
 "businesses must be e-invoices issued through a provider or AADE's tools: "
-"since 2 March 2026 if your 2023 gross revenue was over €1 million, otherwise"
-" from 2 November 2026 (with a phase-in until 31 January 2027 if you file the"
-" declaration in time)."
+"since 2 March 2026 if your 2023 gross revenue was over €1 million, otherwise "
+"from 2 November 2026 (with a phase-in until 31 January 2027 if you file the "
+"declaration in time)."
 msgstr ""
 "A Revel não pode emitir faturas aos participantes onde se aplicam as regras "
 "gregas: os recibos e as faturas têm de ser transmitidos ao myDATA da AADE. "
@@ -1283,8 +1286,8 @@ msgstr ""
 "gregas têm de ser faturas eletrónicas emitidas através de um fornecedor ou "
 "das ferramentas da AADE: desde 2 de março de 2026 se os teus rendimentos "
 "brutos de 2023 ultrapassaram 1 milhão de euros; caso contrário, a partir de "
-"2 de novembro de 2026 (com um período de transição até 31 de janeiro de 2027"
-" se entregares a declaração a tempo)."
+"2 de novembro de 2026 (com um período de transição até 31 de janeiro de 2027 "
+"se entregares a declaração a tempo)."
 
 msgid ""
 "Revel can't issue your attendee invoices. In Croatia, invoices to consumers "
@@ -1312,8 +1315,8 @@ msgstr ""
 "comunicadas ao NAV Online Számla em tempo real. Se isto se aplica a ti, "
 "emite no teu próprio sistema um recibo (nyugta) ou uma fatura para cada "
 "venda paga. Desde 1 de setembro de 2026, os dados dos recibos não emitidos "
-"por uma caixa registadora online ou eletrónica também têm de ser comunicados"
-" à NAV."
+"por uma caixa registadora online ou eletrónica também têm de ser comunicados "
+"à NAV."
 
 msgid ""
 "Reservation only: this isn't a fiscal access ticket (titolo d'accesso). The "
@@ -1348,8 +1351,8 @@ msgid ""
 "Revel can't issue attendee invoices where Slovenian rules apply: invoices "
 "paid by card or online must be verified with FURS in real time. FURS treats "
 "card payments, and online payments paid out to you in batches (as Stripe "
-"usually does), as cash payments. If you must issue invoices, issue a "
-"FURS-verified invoice for every paid sale from your own software, even with "
+"usually does), as cash payments. If you must issue invoices, issue a FURS-"
+"verified invoice for every paid sale from your own software, even with "
 "attendee invoicing turned off."
 msgstr ""
 "A Revel não pode emitir faturas aos participantes onde se aplicam as regras "
@@ -1561,6 +1564,7 @@ msgstr "A venda de bilhetes está pausada."
 msgid "You're outside of the sale window."
 msgstr "Estás fora da janela de venda."
 
+#, python-brace-format
 msgid "The ticket can be purchased by {}"
 msgstr "O bilhete pode ser comprado por {}"
 
@@ -3190,6 +3194,7 @@ msgstr ""
 "ser eliminada: {tiers}. Remove-a primeiro dos preços por categoria desses "
 "tipos de bilhete."
 
+#, python-brace-format
 msgid "Seat '{}' position is outside the sector shape."
 msgstr "A posição do lugar '{}' está fora da forma do setor."
 
@@ -3200,12 +3205,14 @@ msgstr ""
 "O tipo de setor só pode ser alterado enquanto o setor não tiver lugares. "
 "Elimina primeiro os seus lugares."
 
+#, python-brace-format
 msgid "Seat with label '{}' not found in this sector."
 msgstr "Lugar com a etiqueta '{}' não encontrado neste setor."
 
 msgid "Seat position is outside the sector shape."
 msgstr "A posição do lugar está fora da forma do setor."
 
+#, python-brace-format
 msgid ""
 "Seat '{}' is referenced by tickets or an active hold and cannot be deleted. "
 "Decommission it instead (set inactive)."
@@ -3213,9 +3220,11 @@ msgstr ""
 "O lugar '{}' é referenciado por bilhetes ou por uma reserva ativa e não pode "
 "ser eliminado. Desativa-o em vez disso (define como inativo)."
 
+#, python-brace-format
 msgid "Seats not found in this sector: {}"
 msgstr "Lugares não encontrados neste setor: {}"
 
+#, python-brace-format
 msgid ""
 "Seats referenced by tickets or active holds cannot be deleted: {}. "
 "Decommission them instead (set inactive)."
@@ -5304,9 +5313,8 @@ msgid ""
 "The series pass <strong>%(pass_name)s</strong> for <strong>%(series)s</"
 "strong> held by <strong>%(holder)s</strong> has been cancelled."
 msgstr ""
-"O passe de série <strong>%(pass_name)s</strong> de "
-"<strong>%(holder)s</strong> para <strong>%(series)s</strong> foi "
-"cancelado."
+"O passe de série <strong>%(pass_name)s</strong> de <strong>%(holder)s</"
+"strong> para <strong>%(series)s</strong> foi cancelado."
 
 msgid "Holder:"
 msgstr "Titular:"
@@ -5324,8 +5332,7 @@ msgid ""
 "The series pass %(pass_name)s for %(series)s held by %(holder)s has been "
 "cancelled."
 msgstr ""
-"O passe de série %(pass_name)s de %(holder)s para %(series)s foi "
-"cancelado."
+"O passe de série %(pass_name)s de %(holder)s para %(series)s foi cancelado."
 
 #, python-format
 msgid "A refund of %(amount)s %(currency)s has been issued to the pass holder."
@@ -5337,8 +5344,8 @@ msgid ""
 "<strong>%(holder)s</strong> purchased the series pass <strong>%(pass_name)s</"
 "strong> for <strong>%(series)s</strong>."
 msgstr ""
-"<strong>%(holder)s</strong> comprou o passe de série "
-"<strong>%(pass_name)s</strong> para <strong>%(series)s</strong>."
+"<strong>%(holder)s</strong> comprou o passe de série <strong>%(pass_name)s</"
+"strong> para <strong>%(series)s</strong>."
 
 #, python-format
 msgid "%(holder)s purchased the series pass %(pass_name)s for %(series)s."
@@ -5431,8 +5438,8 @@ msgid ""
 "The ticket of <strong>%(holder)s</strong> for <strong>%(event)s</strong> has "
 "been refunded."
 msgstr ""
-"O bilhete de <strong>%(holder)s</strong> para <strong>%(event)s</strong> "
-"foi reembolsado."
+"O bilhete de <strong>%(holder)s</strong> para <strong>%(event)s</strong> foi "
+"reembolsado."
 
 #, python-format
 msgid "The ticket of %(holder)s for %(event)s has been refunded."
@@ -5934,6 +5941,37 @@ msgstr "O teu resumo de notificações"
 msgid "View all notifications:"
 msgstr "Ver todas as notificações:"
 
+#, python-format
+msgid "%(event)s has been cancelled."
+msgstr "%(event)s foi cancelado."
+
+#, python-format
+msgid "Reminder: %(event)s is tomorrow."
+msgstr "Lembrete: %(event)s é amanhã."
+
+#, python-format
+msgid "Reminder: %(event)s is in %(days)s days."
+msgstr "Lembrete: %(event)s é daqui a %(days)s dias."
+
+#, python-format
+msgid ""
+"Ticket pending for %(event)s - the organizer still needs to confirm payment."
+msgstr ""
+"Bilhete pendente para %(event)s - o organizador ainda precisa de confirmar o "
+"pagamento."
+
+#, python-format
+msgid "Ticket confirmed for %(event)s."
+msgstr "Bilhete confirmado para %(event)s."
+
+#, python-format
+msgid "A spot opened up for %(event)s."
+msgstr "Vagou um lugar para %(event)s."
+
+#, python-format
+msgid "Claim it before %(until)s."
+msgstr "Garante-o até %(until)s."
+
 msgid ""
 "The OAuth provider has no signing key configured, so no application can be "
 "saved: RS256 requires OIDC_SIGNING_KEY_PATH to point at an RSA private key "
@@ -5960,20 +5998,25 @@ msgstr "As aplicações registadas dinamicamente não têm proprietário."
 msgid "An owner is required."
 msgstr "É necessário um proprietário."
 
+#, python-brace-format
 msgid "Only the authorization-code grant is supported: {}"
 msgstr "Apenas o fluxo de código de autorização é suportado: {}"
 
+#, python-brace-format
 msgid "Redirect URIs must not contain a fragment: {}"
 msgstr "Os URI de redirecionamento não podem conter um fragmento: {}"
 
+#, python-brace-format
 msgid "Plain http is only allowed for loopback addresses of public clients: {}"
 msgstr ""
 "O http sem cifra só é permitido em endereços de loopback de clientes "
 "públicos: {}"
 
+#, python-brace-format
 msgid "Unsupported redirect URI scheme: {}"
 msgstr "Esquema de URI de redirecionamento não suportado: {}"
 
+#, python-brace-format
 msgid "Unknown scopes: {}"
 msgstr "Scopes desconhecidos: {}"
 
@@ -6039,6 +6082,7 @@ msgstr "Este campo não pode ser nulo."
 msgid "A public client has no client secret to rotate."
 msgstr "Um cliente público não tem client secret para renovar."
 
+#, python-brace-format
 msgid "Not a valid resource indicator: {}"
 msgstr "Indicador de recurso inválido: {}"
 
@@ -6100,9 +6144,11 @@ msgstr ""
 msgid "Only the organization owner can perform this action."
 msgstr "Só o/a proprietário/a da organização pode realizar esta ação."
 
+#, python-brace-format
 msgid "Unknown event {} or it does not belong to this organization."
 msgstr "Evento {} desconhecido ou não pertence a esta organização."
 
+#, python-brace-format
 msgid "Unknown or cross-organization membership_tier ids: {}"
 msgstr "IDs de membership_tier desconhecidos ou de outra organização: {}"
 
@@ -6125,18 +6171,23 @@ msgstr ""
 "Não é possível reabrir: indica um closes_at futuro ou define "
 "clear_closes_at=True."
 
+#, python-brace-format
 msgid "Unknown multiple-choice question id: {}"
 msgstr "ID de pergunta de escolha múltipla desconhecido: {}"
 
+#, python-brace-format
 msgid "Unknown multiple-choice option id: {}"
 msgstr "ID de opção de escolha múltipla desconhecido: {}"
 
+#, python-brace-format
 msgid "Unknown free-text question id: {}"
 msgstr "ID de pergunta de texto livre desconhecido: {}"
 
+#, python-brace-format
 msgid "Unknown file-upload question id: {}"
 msgstr "ID de pergunta de carregamento de ficheiro desconhecido: {}"
 
+#, python-brace-format
 msgid "Unknown or other-user file_upload ids: {}"
 msgstr "IDs de file_upload desconhecidos ou pertencentes a outra pessoa: {}"
 
@@ -6146,9 +6197,11 @@ msgstr "As respostas que enviaste referem-se a um questionário diferente."
 msgid "You are missing mandatory answers."
 msgstr "Faltam respostas obrigatórias."
 
+#, python-brace-format
 msgid "File exceeds maximum upload size of {}MB."
 msgstr "O ficheiro excede o tamanho máximo de carregamento de {} MB."
 
+#, python-brace-format
 msgid ""
 "File type '{}' is not allowed. Allowed types: documents, images, audio, "
 "video, and archives."
@@ -6171,6 +6224,7 @@ msgstr "A pergunta não pertence a este questionário."
 msgid "Some files do not exist or do not belong to you."
 msgstr "Alguns ficheiros não existem ou não te pertencem."
 
+#, python-brace-format
 msgid "Too many files. Maximum allowed: {}."
 msgstr "Demasiados ficheiros. Máximo permitido: {}."
 
@@ -6426,6 +6480,15 @@ msgstr "Preferências de notificações"
 msgid "Email Suppressions"
 msgstr "Supressões de e-mail"
 
+msgid "SMS Opt-outs"
+msgstr "Cancelamentos de SMS"
+
+msgid "SMS Log"
+msgstr "Registo de SMS"
+
+msgid "Phone Verifications"
+msgstr "Verificações de telefone"
+
 msgid "Geography"
 msgstr "Geografia"
 
@@ -6503,6 +6566,50 @@ msgstr "Autenticação"
 
 msgid "Groups"
 msgstr "Grupos"
+
+msgid "SMS integration is not enabled."
+msgstr "A integração de SMS não está ativada."
+
+msgid "We sent a verification code to that number."
+msgstr "Enviámos um código de verificação para esse número."
+
+msgid "Enter the number in international format, e.g. +15551234567."
+msgstr "Introduz o número em formato internacional, p. ex. +351912345678."
+
+msgid "SMS verification is not available for numbers in that country."
+msgstr "A verificação por SMS não está disponível para números desse país."
+
+msgid "This number is already verified on your account."
+msgstr "Este número já está verificado na tua conta."
+
+msgid "This number is already in use."
+msgstr "Este número já está em uso."
+
+msgid "This number has opted out of texts. Reply START to our number first."
+msgstr "Este número cancelou os SMS. Responde START ao nosso número primeiro."
+
+msgid "Please wait a moment before requesting another code."
+msgstr "Aguarda um momento antes de pedires outro código."
+
+#, python-brace-format
+msgid ""
+"Your {sender} verification code is {code}. It expires in {minutes} minutes."
+msgstr ""
+"O teu código de verificação {sender} é {code}. Expira em {minutes} minutos."
+
+msgid "No valid verification in progress. Request a new code."
+msgstr "Nenhuma verificação válida em curso. Pede um novo código."
+
+msgid "Incorrect code."
+msgstr "Código incorreto."
+
+#, python-brace-format
+msgid ""
+"Your number is verified for {sender} texts. Msg & data rates may apply. "
+"Reply STOP to opt out, HELP for help."
+msgstr ""
+"O teu número está verificado para SMS de {sender}. Podem aplicar-se tarifas. "
+"Responde STOP para cancelar, HELP para ajuda."
 
 msgid "Telegram integration is not enabled."
 msgstr "A integração com o Telegram não está ativada."

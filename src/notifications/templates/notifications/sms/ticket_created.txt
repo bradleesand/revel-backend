@@ -1,0 +1,4 @@
+{% load i18n %}{% autoescape off %}{% if context.ticket_status == "pending" %}{% blocktranslate with event=context.event_name %}Ticket pending for {{ event }} - the organizer still needs to confirm payment.{% endblocktranslate %}{% else %}{% blocktranslate with event=context.event_name %}Ticket confirmed for {{ event }}.{% endblocktranslate %}{% endif %}
+{{ context.event_start_formatted }}{% if context.event_location %} - {{ context.event_location }}{% endif %}
+{% if context.tier_name %}{% trans "Tier:" %} {{ context.tier_name }}{% endif %}
+{% if context.event_url %}{{ context.event_url }}{% endif %}{% endautoescape %}

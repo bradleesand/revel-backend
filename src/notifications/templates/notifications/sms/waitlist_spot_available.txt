@@ -1,0 +1,2 @@
+{% load i18n %}{% autoescape off %}{% blocktranslate with event=context.event_name %}A spot opened up for {{ event }}.{% endblocktranslate %}{% if context.expires_at_formatted %} {% blocktranslate with until=context.expires_at_formatted %}Claim it before {{ until }}.{% endblocktranslate %}{% endif %}
+{{ context.event_url }}{% endautoescape %}

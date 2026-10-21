@@ -1,0 +1,4 @@
+{% load i18n %}{% autoescape off %}{% blocktranslate with event=context.event_name %}{{ event }} has been cancelled.{% endblocktranslate %}
+{{ context.event_start_formatted }}
+{% if context.cancellation_reason %}{% trans "Reason:" %} {{ context.cancellation_reason }}{% endif %}
+{% if context.refund_info %}{{ context.refund_info }}{% endif %}{% endautoescape %}

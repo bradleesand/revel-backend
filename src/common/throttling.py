@@ -88,6 +88,13 @@ class WriteThrottle(DisableableThrottleMixin, UserRateThrottle):
     rate = "100/min"
 
 
+class SmsCodeRequestThrottle(DisableableThrottleMixin, UserRateThrottle):
+    """Phone verification code requests: each one is a paid text to an arbitrary number."""
+
+    scope = "sms_code_request"
+    rate = "5/hour"
+
+
 class GeoThrottle(DisableableThrottleMixin, AnonRateThrottle):
     """Geolocation endpoint throttle (100 requests/min)."""
 

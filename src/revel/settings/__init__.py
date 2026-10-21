@@ -8,6 +8,7 @@ from .observability import *  # noqa: F403, F401
 from .sso import *  # noqa: F403, F401
 from .stripe import *  # noqa: F403, F401
 from .telegram import *  # noqa: F403, F401
+from .sms import *  # noqa: F403, F401
 from .unfold import *  # noqa: F403, F401
 from .wallet import *  # noqa: F403, F401
 from .integrations import *  # noqa: F403, F401
