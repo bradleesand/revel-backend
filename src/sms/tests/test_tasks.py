@@ -1,4 +1,4 @@
-"""Tests for ``send_sms_task`` (opt-out, cap, retries, callback) and the Twilio backend mapping."""
+"""Tests for ``send_sms_task`` (opt-out, cap, per-purpose retries, callback) and the Twilio backend mapping."""
 
 import typing as t
 from unittest.mock import MagicMock, patch
@@ -10,7 +10,7 @@ from notifications.enums import DeliveryChannel, DeliveryStatus
 from notifications.models import Notification, NotificationDelivery
 from sms.exceptions import SmsConfigurationError, SmsError, SmsOptedOutError, SmsRetryableError
 from sms.models import SmsLog, SmsOptOut
-from sms.tasks import send_sms_task
+from sms.tasks import retry_countdowns, send_sms_task
 
 pytestmark = pytest.mark.django_db
 
@@ -120,7 +120,7 @@ class TestSendSmsTask:
                     "purpose": SmsLog.Purpose.NOTIFICATION,
                     "callback_data": _callback_for(sms_delivery),
                 },
-                retries=3,
+                retries=len(retry_countdowns(SmsLog.Purpose.NOTIFICATION)),
             )
 
         assert result.status == "SUCCESS"
@@ -128,6 +128,25 @@ class TestSendSmsTask:
         assert sms_delivery.status == DeliveryStatus.FAILED
         assert "503" in sms_delivery.error_message
         assert not SmsLog.objects.exists()
+
+    def test_retry_schedule_depends_on_purpose(self) -> None:
+        """Notifications outlast a phone that is off overnight; codes give up before they expire."""
+        assert len(retry_countdowns(SmsLog.Purpose.NOTIFICATION)) == 5
+        assert sum(retry_countdowns(SmsLog.Purpose.NOTIFICATION)) >= 8 * 3600
+        assert sum(retry_countdowns(SmsLog.Purpose.VERIFICATION)) < 5 * 60
+        assert retry_countdowns("unknown") == retry_countdowns(SmsLog.Purpose.CONFIRMATION)
+
+    def test_verification_code_gives_up_after_its_short_schedule(self) -> None:
+        backend = MagicMock(side_effect=SmsRetryableError("503"))
+        with patch("sms.service.send_sms", backend):
+            result = send_sms_task.apply(
+                args=(TO,),
+                kwargs={"body": "code 123456", "purpose": SmsLog.Purpose.VERIFICATION},
+                retries=len(retry_countdowns(SmsLog.Purpose.VERIFICATION)),
+            )
+
+        assert result.status == "SUCCESS"  # no further Retry requested
+        assert backend.call_count == 1
 
     def test_permanent_error_fails_without_retry(self, sms_delivery: NotificationDelivery) -> None:
         backend = MagicMock(side_effect=SmsError("21211 invalid number"))

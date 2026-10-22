@@ -19,3 +19,7 @@ class SmsRetryableError(SmsError):
 
 class SmsMonthlyLimitError(SmsError):
     """``SMS_MONTHLY_LIMIT`` would be exceeded; the message was not sent."""
+
+
+class InvalidSmsGatewaySignatureError(Exception):
+    """Raised when an inbound gateway webhook has no valid ``X-Signature`` (rendered as 403)."""

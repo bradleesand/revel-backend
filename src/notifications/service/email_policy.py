@@ -11,6 +11,10 @@ from accounts.utils.email_normalization import normalize_email_for_matching
 from common.utils import get_or_create_with_race_protection
 from notifications.enums import DeliveryChannel
 from notifications.models import EmailSuppression
+from sms.synthetic_email import is_sms_only_email
+
+# Returned (unsaved) for synthetic phone-only addresses so callers see one consistent reason.
+SMS_ONLY_SUPPRESSION_DETAIL = "sms-only address (phone guest); never mailed"
 
 
 def may_email(user: RevelUser, notification_type: str) -> bool:
@@ -26,7 +30,7 @@ def may_email(user: RevelUser, notification_type: str) -> bool:
     Returns:
         True if the user has an address and EMAIL is an effective channel for the type.
     """
-    if not user.email:
+    if not user.email or is_sms_only_email(user.email):
         return False
     channels = user.notification_preferences.get_channels_for_notification_type(notification_type)
     return DeliveryChannel.EMAIL in channels
@@ -46,6 +50,13 @@ def suppression_for(email: str, *, include_opt_out: bool = False) -> EmailSuppre
     Returns:
         The blocking suppression, or None.
     """
+    if is_sms_only_email(email):
+        return EmailSuppression(
+            email=normalize_email_for_matching(email),
+            reason=EmailSuppression.Reason.BLOCKED,
+            source=EmailSuppression.Source.ADMIN,
+            detail=SMS_ONLY_SUPPRESSION_DETAIL,
+        )
     qs = EmailSuppression.objects.filter(email=normalize_email_for_matching(email))
     if not include_opt_out:
         qs = qs.exclude(reason=EmailSuppression.Reason.INVITATION_OPT_OUT)
@@ -61,12 +72,15 @@ def suppressed_addresses(emails: Iterable[str]) -> set[str]:
     Returns:
         The normalized addresses among ``emails`` that are suppressed.
     """
+    emails = list(emails)
     normalized = {normalize_email_for_matching(email) for email in emails if email}
-    return set(
+    suppressed = set(
         EmailSuppression.objects.filter(email__in=normalized)
         .exclude(reason=EmailSuppression.Reason.INVITATION_OPT_OUT)
         .values_list("email", flat=True)
     )
+    suppressed.update(normalize_email_for_matching(email) for email in emails if is_sms_only_email(email))
+    return suppressed
 
 
 def suppress(

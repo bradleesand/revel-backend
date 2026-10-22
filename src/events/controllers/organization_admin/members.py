@@ -166,6 +166,11 @@ class OrganizationAdminMembersController(OrganizationAdminBaseController):
         if not update_data:
             return member
 
+        if "phone_number" in update_data:
+            self._apply_phone_override(member.user, update_data.pop("phone_number"))
+            if not update_data:
+                return member
+
         # Resolve tier_id to tier object if provided
         tier = None
         clear_tier = False
@@ -179,6 +184,19 @@ class OrganizationAdminMembersController(OrganizationAdminBaseController):
         return organization_service.update_member(
             member, status=update_data.get("status"), tier=tier, clear_tier=clear_tier
         )
+
+    def _apply_phone_override(self, user: RevelUser, raw_number: str | None) -> None:
+        """Set or clear a member's mobile number on the organizer's say-so (see ``sms.service``)."""
+        from django.conf import settings
+
+        from sms import service as sms_service
+
+        if not settings.FEATURE_SMS:
+            raise HttpError(400, str(_("SMS is not enabled on this instance.")))
+        if raw_number is None or not raw_number.strip():
+            sms_service.remove_phone(user)
+        else:
+            sms_service.set_phone_by_host(user, raw_number, actor=self.user())
 
     @route.delete(
         "/members/{user_id}",

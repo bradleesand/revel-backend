@@ -1,0 +1,3 @@
+{% load i18n %}{% autoescape off %}{% blocktranslate with org=context.organization_name event=context.event_name %}{{ org }} invited you to {{ event }}.{% endblocktranslate %}
+{{ context.event_start_formatted }}{% if context.event_location %} - {{ context.event_location }}{% endif %}
+{% if context.rsvp_required %}{% trans "RSVP:" %}{% else %}{% trans "Details:" %}{% endif %} {{ context.rsvp_url|default:context.event_url }}{% endautoescape %}

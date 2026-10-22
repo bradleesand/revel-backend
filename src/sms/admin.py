@@ -40,3 +40,16 @@ class PhoneVerificationAdmin(ModelAdmin):  # type: ignore[misc]
 
     def has_add_permission(self, *args: object, **kwargs: object) -> bool:
         return False
+
+
+@admin.register(models.SmsGatewayEvent)
+class SmsGatewayEventAdmin(ModelAdmin):  # type: ignore[misc]
+    list_display = ["created_at", "event_type", "event_id", "device_id", "outcome"]
+    list_filter = ["event_type", "outcome", "created_at"]
+    search_fields = ["event_id", "device_id"]
+    readonly_fields = ["event_id", "event_type", "device_id", "payload", "outcome", "created_at", "updated_at"]
+    ordering = ["-created_at"]
+    date_hierarchy = "created_at"
+
+    def has_add_permission(self, *args: object, **kwargs: object) -> bool:
+        return False

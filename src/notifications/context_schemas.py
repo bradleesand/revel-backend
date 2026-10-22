@@ -269,6 +269,7 @@ class EventReminderContext(BaseNotificationContext):
     event_end_formatted: t.NotRequired[str]  # User-friendly format
     event_location: str
     event_url: str
+    rsvp_url: t.NotRequired[str]  # Phone-only guests: their texted /g/<code> link instead of event_url
     days_until: int  # 14, 7, or 1
     reminder_message: t.NotRequired[str]
     # Ticket info (if user has a ticket)
@@ -395,6 +396,7 @@ class InvitationReceivedContext(BaseNotificationContext):
     event_end_formatted: t.NotRequired[str]  # User-friendly format, in event TZ
     event_location: str
     event_url: str
+    rsvp_url: t.NotRequired[str]  # Phone-only guests: their texted /g/<code> link instead of event_url
     organization_id: str
     organization_name: str
     rsvp_required: bool

@@ -11,6 +11,7 @@ from django.utils import timezone
 from accounts.models import RevelUser
 from common.models import SiteSettings
 from events.models import Event, EventRSVP, Ticket
+from events.service import guest_links
 from notifications.enums import NotificationType
 from notifications.models import Notification
 from notifications.service.notification_helpers import format_event_datetime, get_event_location_for_user
@@ -139,6 +140,9 @@ class EventReminderService:
         user_context = {**context, "event_location": event_location}
         if address_url:
             user_context["address_url"] = address_url
+        # Phone-only guests can't log in: point the text at their guest link instead of the event page.
+        if user.guest and (link := guest_links.guest_link_for(user, event.id)):
+            user_context["rsvp_url"] = guest_links.guest_link_url(link)
         return user_context
 
     def should_send_reminder(self, user: RevelUser, event_id: str, already_sent: set[tuple[UUID, str]]) -> bool:

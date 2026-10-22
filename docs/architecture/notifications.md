@@ -19,7 +19,7 @@ flowchart LR
 
     Celery --> SMTP["SMTP Server"]
     Celery --> TGBot["Telegram Bot API"]
-    Celery --> SMSProvider["SMS provider (Twilio)"]
+    Celery --> SMSProvider["SMS transport (Android gateway app or Twilio)"]
 
     Prefs["User Preferences"] -.->|"filter channels"| Dispatcher
 ```
@@ -224,34 +224,75 @@ Notifications are triggered from the service layer via Django signals and direct
 
 ## SMS channel
 
-SMS is deliberately **not** a peer of email: every segment costs money and carriers filter
-chatty senders, so it is gated three ways.
+SMS is deliberately **not** a peer of email: texts cost money (or come off a personal phone
+plan) and carriers filter chatty senders, so it is gated three ways.
 
-- **Deployment opt-in** — `FEATURE_SMS` (default `False`) plus a provider in `settings/sms.py`.
+- **Deployment opt-in** — `FEATURE_SMS` (default `False`) plus a transport in `settings/sms.py`.
   `SMS_BACKEND` is a dotted path to a `send(*, to, body) -> str` callable; `SMS_DRY_RUN=True`
-  swaps in the console backend (logs instead of sending, same as `EMAIL_DRY_RUN`). The Twilio
-  backend prefers a Messaging Service (`TWILIO_MESSAGING_SERVICE_SID`) so STOP/START handling
-  and geo-permissions live at the provider.
+  swaps in the console backend (logs instead of sending, same as `EMAIL_DRY_RUN`). Two
+  transports ship:
+    - `sms.backends.android_gateway` (default) — [SMS Gateway for Android](https://docs.sms-gate.app)
+      in Local Server mode: an HTTP API on a phone the backend can reach (LAN or VPN),
+      `SMS_GATEWAY_URLS` tried in order, Basic Auth. Delivery receipts and inbound replies come
+      back through `POST /api/webhooks/sms-gateway/` (HMAC-SHA256 `X-Signature` over body +
+      `X-Timestamp`, deduplicated in `SmsGatewayEvent`). `manage.py register_sms_gateway_webhooks`
+      subscribes the app; `sms.check_gateway_health` (Beat, every 30 min) pings it and sends one
+      Pushover alert per outage.
+    - `sms.backends.twilio` — prefers a Messaging Service so STOP/START handling and
+      geo-permissions live at the provider.
 - **Type allowlist** — only `SMS_ELIGIBLE_TYPES` (`notifications/enums.py`: event reminders,
-  ticket created, event cancelled, waitlist spot available) ever reach the channel. The
-  dispatcher strips SMS from every other type, including the mandatory ones that force in-app
-  and email, so a user enabling SMS globally never receives terms notices or receipts by text.
-  Each eligible type ships its own `sms/<type>.txt` template, written for the medium (plain
-  text, ASCII punctuation, a single full-domain link); a test asserts GSM-7 and ≤ 2 segments.
-- **Verified phone** — `RevelUser.phone_number` is only ever set through the verification flow
-  (`POST /api/sms/phone/request-code` → code texted → `POST /api/sms/phone/verify`), which stamps
-  `phone_verified_at`. Codes are 6 digits, expire after `SMS_OTP_EXPIRATION_MINUTES`, allow
-  `SMS_OTP_MAX_ATTEMPTS` guesses, and requests are rate-limited and restricted to
-  `SMS_ALLOWED_COUNTRY_PREFIXES` (default `+1`) to blunt SMS-pumping fraud. After a successful
-  verification the user receives a confirmation text with the STOP/HELP wording carriers expect.
+  ticket created, event cancelled, waitlist spot available, invitation received) ever reach the
+  channel. The dispatcher strips SMS from every other type, including the mandatory ones that
+  force in-app and email, so a user enabling SMS globally never receives terms notices or
+  receipts by text. Each eligible type ships its own `sms/<type>.txt` template, written for the
+  medium (plain text, ASCII punctuation, a single full-domain link); a test asserts GSM-7 and
+  ≤ 2 segments.
+- **Verified phone** — SMS goes only to a number with `phone_verified_at` set. Two ways to get
+  there, recorded in `phone_verification_source`:
+    - *self* — the user verifies their own number (`POST /api/sms/phone/request-code` → code
+      texted → `POST /api/sms/phone/verify`). Codes are 6 digits, expire after
+      `SMS_OTP_EXPIRATION_MINUTES`, allow `SMS_OTP_MAX_ATTEMPTS` guesses, and requests are
+      rate-limited and restricted to `SMS_ALLOWED_COUNTRY_PREFIXES` (default `+1`) to blunt
+      SMS-pumping fraud. A confirmation text with the STOP wording follows.
+    - *host* — an organizer with member management sets a member's number through
+      `PUT /organization-admin/{slug}/members/{user_id}` (`phone_number`; `null` clears). The
+      number is validated, allow-listed and checked against bans and the opt-out list, then
+      stamped verified and SMS is enabled in the member's preferences. **No code and no
+      consent text are sent** — this is for hosts adding people they know. A STOP reply is
+      still honoured.
+
+### Phone-only guests
+
+People who never create an account can still be invited and reminded by text. `POST
+/event-admin/{event_id}/invitations` accepts `phone_numbers` next to `emails`: each number
+becomes (or resolves to) a **phone-only guest** — a regular `guest=True` user whose email is
+the synthetic `<E.164 digits>@SMS_ONLY_EMAIL_DOMAIN` (`sms.synthetic_email`) and whose number
+is pre-verified by the host — plus a real `EventInvitation` and a `GuestAccessLink`. The
+invitation notification's SMS carries `<frontend>/g/<code>`; `GET /api/events/guest-link/{code}`
+shows the event and `POST /api/events/guest-link/{code}/rsvp/{answer}` RSVPs as that user with
+no login — the text already proved possession of the number. Links expire 7 days after the
+event ends; reminder texts to phone guests carry the same link. Requires `FEATURE_SMS` and a
+non-empty `SMS_ONLY_EMAIL_DOMAIN`.
+
+The synthetic address is an identity key, never a mailbox. The digits sit in the local part
+on a dedicated subdomain (`normalize_email_for_matching` strips `+tags`, so `sms+digits@`
+would collide). Nothing is ever mailed to it: `email_policy.may_email` / `suppression_for`
+refuse it, and with `SMS_ONLY_EMAIL_DOMAIN` set the configured `EMAIL_BACKEND` is wrapped by
+`sms.email_backend.SmsOnlyFilteringBackend` (the real backend moves to
+`SMS_INNER_EMAIL_BACKEND`), which drops such recipients from every `EmailMessage` — account
+mail, guest confirmations, invoices included. Merging a phone guest into a later real account
+is not automated yet: the number's uniqueness surfaces the collision at verification time.
 
 Delivery runs through `sms.tasks.send_sms_task`, the single send path for notifications,
-verification codes and confirmations. It enforces the `SmsOptOut` list (fed by provider
-"opted out" errors; a STOP webhook can feed it too), the `SMS_MONTHLY_LIMIT` bill-shock cap
-(admin Pushover ping when hit), retries transient provider errors with backoff, writes an
-`SmsLog` row per send (no body stored), and reports back to `NotificationDelivery` through the
-same allow-listed callback mechanism as Telegram, storing the provider message id in
-`delivery.metadata`.
+verification codes and confirmations. It enforces the `SmsOptOut` list (fed by STOP replies
+via the gateway webhook, or provider "opted out" errors), the `SMS_MONTHLY_LIMIT` runaway cap
+(admin Pushover ping when hit), retries transient transport errors on a per-purpose schedule
+(notifications for hours so a phone that is off overnight still delivers; verification codes
+only briefly, they expire anyway), is rate-limited to one text a second, writes an `SmsLog` row
+per send (no body stored), and reports back to `NotificationDelivery` through the same
+allow-listed callback mechanism as Telegram, storing the transport message id in
+`delivery.metadata` so the gateway's `sms:sent` / `sms:delivered` / `sms:failed` webhooks can
+update it later.
 
 !!! warning "`FEATURE_TELEGRAM` strips the Telegram channel platform-wide"
     When `FEATURE_TELEGRAM` is off (self-host without a bot), the dispatcher strips the

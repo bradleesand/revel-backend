@@ -455,6 +455,7 @@ EXPORT_RULES: dict[str, ExportRule] = {
     "payments": ExportRule(include=True),
     "rsvps": ExportRule(include=True),
     "invitations": ExportRule(include=True),
+    "guest_access_links": ExportRule(include=True, exclude_fields=("code",)),
     "event_questionnaire_submissions": ExportRule(include=True),
     "event_bookmarks": ExportRule(include=True),
     "event_series_follows": ExportRule(include=True),

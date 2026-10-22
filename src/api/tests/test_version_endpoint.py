@@ -45,6 +45,8 @@ class TestVersionEndpointFeatures:
         """Test that the features block mirrors the FEATURE_* settings."""
         settings.FEATURE_ORGANIZATION_CREATION = True
         settings.FEATURE_TELEGRAM = False
+        settings.FEATURE_SMS = True
+        settings.SMS_ONLY_EMAIL_DOMAIN = ""
         settings.FEATURE_LLM_EVALUATION = False
 
         data = client.get(VERSION_URL).json()
@@ -52,6 +54,8 @@ class TestVersionEndpointFeatures:
         assert data["features"] == {
             "organization_creation": True,
             "telegram": False,
+            "sms": True,
+            "sms_phone_guests": False,
             "llm_evaluation": False,
             "referral_applications": False,
             # Credential presence is the flag (ADR-0008) and the test settings ship no signing
@@ -92,10 +96,20 @@ class TestVersionEndpointFeatures:
         assert set(data["features"]) == {
             "organization_creation",
             "telegram",
+            "sms",
+            "sms_phone_guests",
             "llm_evaluation",
             "referral_applications",
             "oauth_provider",
         }
+
+    def test_phone_guests_flag_needs_sms_and_a_domain(self, client: Client, settings: t.Any) -> None:
+        settings.FEATURE_SMS = True
+        settings.SMS_ONLY_EMAIL_DOMAIN = "sms.events.example.com"
+        assert client.get(VERSION_URL).json()["features"]["sms_phone_guests"] is True
+
+        settings.FEATURE_SMS = False
+        assert client.get(VERSION_URL).json()["features"]["sms_phone_guests"] is False
 
     def test_sso_providers_listed(self, client: Client, settings: t.Any) -> None:
         """Configured OIDC providers are exposed as key + display name, secrets excluded."""

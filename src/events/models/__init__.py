@@ -11,6 +11,7 @@ from .event import (
 )
 from .event_series import EventSeries
 from .follow import EventSeriesFollow, OrganizationFollow
+from .guest_link import GuestAccessLink
 from .invitation import (
     EventInvitation,
     EventInvitationRequest,
@@ -76,6 +77,7 @@ __all__ = [
     "Event",
     "EventInvitation",
     "EventInvitationRequest",
+    "GuestAccessLink",
     "EventRSVP",
     "EventToken",
     "EventWaitList",

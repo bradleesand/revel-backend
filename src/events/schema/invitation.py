@@ -4,7 +4,7 @@ import typing as t
 from uuid import UUID
 
 from ninja import ModelSchema, Schema
-from pydantic import AwareDatetime, EmailStr, Field, StringConstraints
+from pydantic import AwareDatetime, EmailStr, Field, StringConstraints, model_validator
 
 from accounts.schema import MinimalRevelUserSchema
 from common.schema import OneToOneFiftyString
@@ -31,8 +31,24 @@ class DirectInvitationCreateSchema(InvitationBaseSchema):
     Note: Notifications are sent automatically via Django signals when invitations are created.
     """
 
-    emails: list[EmailStr] = Field(..., min_length=1, max_length=500, description="List of email addresses to invite")
+    emails: list[EmailStr] = Field(
+        default_factory=list, max_length=500, description="List of email addresses to invite"
+    )
+    phone_numbers: list[str] = Field(
+        default_factory=list,
+        max_length=500,
+        description=(
+            "Mobile numbers (E.164) to invite by text. Requires the SMS feature and phone-only guests; "
+            "people without an account become phone-only guest users and get a texted RSVP link."
+        ),
+    )
     tier_ids: list[UUID] = Field(default_factory=list, description="Ticket tiers to assign to invitations")
+
+    @model_validator(mode="after")
+    def _at_least_one_recipient(self) -> "DirectInvitationCreateSchema":
+        if not self.emails and not self.phone_numbers:
+            raise ValueError("Provide at least one email address or phone number.")
+        return self
 
 
 class DirectInvitationResponseSchema(Schema):
@@ -40,6 +56,7 @@ class DirectInvitationResponseSchema(Schema):
 
     created_invitations: int = Field(..., description="Number of EventInvitation objects created")
     pending_invitations: int = Field(..., description="Number of PendingEventInvitation objects created")
+    phone_invitations: int = Field(0, description="Invitations sent by text (counted within created_invitations)")
     total_invited: int = Field(..., description="Total number of users invited")
 
 
@@ -188,3 +205,15 @@ class EventTokenCreateSchema(EventTokenBaseSchema):
 
 class EventTokenUpdateSchema(EventTokenBaseSchema):
     expires_at: AwareDatetime | None = None
+
+
+class GuestLinkSchema(Schema):
+    """What a phone-only guest sees when opening a texted ``/g/<code>`` link."""
+
+    code: str
+    expires_at: AwareDatetime
+    display_name: str
+    phone_number_masked: str | None = None
+    rsvp_status: models.EventRSVP.RsvpStatus | None = None
+    can_rsvp: bool = Field(description="False when the event needs a ticket (RSVP buttons are hidden)")
+    event: EventInListSchema

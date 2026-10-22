@@ -488,6 +488,14 @@ class MinimalOrganizationMemberSchema(ModelSchema):
 class OrganizationMemberUpdateSchema(Schema):
     status: OrganizationMember.MembershipStatus | None = None
     tier_id: UUID4 | None = None
+    phone_number: str | None = Field(
+        None,
+        max_length=20,
+        description=(
+            "Host override (requires the SMS feature): set the member's mobile number, verified on the spot, "
+            "no code or consent text sent. Explicit null clears it. Omit to leave unchanged."
+        ),
+    )
 
 
 class OrganizationStaffSchema(Schema):

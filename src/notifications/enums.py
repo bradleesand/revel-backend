@@ -194,6 +194,7 @@ SMS_ELIGIBLE_TYPES: frozenset[str] = frozenset(
         NotificationType.TICKET_CREATED,
         NotificationType.EVENT_CANCELLED,
         NotificationType.WAITLIST_SPOT_AVAILABLE,
+        NotificationType.INVITATION_RECEIVED,
     }
 )
 

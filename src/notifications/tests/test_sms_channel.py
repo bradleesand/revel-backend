@@ -197,6 +197,22 @@ _SAMPLE_CONTEXTS: dict[str, dict[str, t.Any]] = {
         "time_remaining_formatted": "2 hours",
         "is_cutoff_batch": False,
     },
+    NotificationType.INVITATION_RECEIVED: {
+        "invitation_id": str(uuid.uuid4()),
+        "event_id": str(uuid.uuid4()),
+        "event_name": "Kelsey & Violet's Midsummer Dinner Party",
+        "invitation_message": "Come eat with us!",
+        "event_start": "2025-12-01T18:00:00Z",
+        "event_end": "2025-12-01T23:00:00Z",
+        "event_start_formatted": "Saturday, December 01, 2025 at 6:00 PM PST",
+        "event_location": "The Long Table, 1234 Example Street, Portland",
+        "event_url": "https://events.example.com/events/midsummer-dinner-party",
+        "rsvp_url": "https://events.example.com/g/Abc23Defgh",
+        "organization_id": str(uuid.uuid4()),
+        "organization_name": "House Ego",
+        "rsvp_required": True,
+        "tickets_required": False,
+    },
 }
 
 

@@ -96,7 +96,7 @@ def handle_global_ban_created(sender: type[GlobalBan], instance: GlobalBan, crea
     if not created:
         return
 
-    from accounts.service.global_ban_service import process_email_ban, process_telegram_ban
+    from accounts.service.global_ban_service import process_email_ban, process_phone_ban, process_telegram_ban
 
     if instance.ban_type == GlobalBan.BanType.DOMAIN:
         from accounts.tasks import process_domain_ban_task
@@ -107,3 +107,5 @@ def handle_global_ban_created(sender: type[GlobalBan], instance: GlobalBan, crea
         process_email_ban(instance)
     elif instance.ban_type == GlobalBan.BanType.TELEGRAM:
         process_telegram_ban(instance)
+    elif instance.ban_type == GlobalBan.BanType.PHONE:
+        process_phone_ban(instance)

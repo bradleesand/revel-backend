@@ -1529,6 +1529,9 @@ msgstr "Keine passenden Blacklist-Einträge gefunden."
 msgid "Token does not match this organization."
 msgstr "Dieses Token gehört nicht zu dieser Organisation."
 
+msgid "SMS is not enabled on this instance."
+msgstr "SMS ist auf dieser Instanz nicht aktiviert."
+
 msgid "Only the organization owner can create staff members."
 msgstr "Nur der:die Organisationsinhaber:in kann Staff-Mitglieder erstellen."
 
@@ -2577,6 +2580,9 @@ msgstr "Du folgst dieser Serie bereits"
 msgid "Not following this series"
 msgstr "Du folgst dieser Serie nicht"
 
+msgid "Inviting by phone number is not enabled on this instance."
+msgstr "Einladungen per Telefonnummer sind auf dieser Instanz nicht aktiviert."
+
 msgid "Invalid token."
 msgstr "Ungültiger Token."
 
@@ -2597,6 +2603,12 @@ msgstr "Bitte überprüfe deine E-Mails, um deinen Ticketkauf zu bestätigen"
 
 msgid "Invalid token type"
 msgstr "Ungültiger Token-Typ"
+
+msgid "This link is not valid."
+msgstr "Dieser Link ist ungültig."
+
+msgid "This link has expired."
+msgstr "Dieser Link ist abgelaufen."
 
 #, python-format
 msgid "Ticket tiers not found: %(ids)s"
@@ -6099,6 +6111,13 @@ msgid "Reminder: %(event)s is in %(days)s days."
 msgstr "Erinnerung: %(event)s ist in %(days)s Tagen."
 
 #, python-format
+msgid "%(org)s invited you to %(event)s."
+msgstr "%(org)s hat dich zu %(event)s eingeladen."
+
+msgid "RSVP:"
+msgstr "Antworten:"
+
+#, python-format
 msgid ""
 "Ticket pending for %(event)s - the organizer still needs to confirm payment."
 msgstr ""
@@ -6526,6 +6545,9 @@ msgstr "Ausstehende Einladungen"
 msgid "Event Tokens"
 msgstr "Event-Token"
 
+msgid "Guest Links"
+msgstr "Gast-Links"
+
 msgid "Potluck Items"
 msgstr "Mitbringsel"
 
@@ -6640,6 +6662,9 @@ msgstr "SMS-Protokoll"
 msgid "Phone Verifications"
 msgstr "Telefonverifizierungen"
 
+msgid "SMS Gateway Events"
+msgstr "SMS-Gateway-Ereignisse"
+
 msgid "Geography"
 msgstr "Geografie"
 
@@ -6724,11 +6749,17 @@ msgstr "Die SMS-Integration ist nicht aktiviert."
 msgid "We sent a verification code to that number."
 msgstr "Wir haben einen Bestätigungscode an diese Nummer gesendet."
 
+msgid "Invalid gateway signature"
+msgstr "Ungültige Gateway-Signatur"
+
 msgid "Enter the number in international format, e.g. +15551234567."
 msgstr "Gib die Nummer im internationalen Format ein, z. B. +4915112345678."
 
-msgid "SMS verification is not available for numbers in that country."
-msgstr "Die SMS-Verifizierung ist für Nummern aus diesem Land nicht verfügbar."
+msgid "Texts are not available for numbers in that country."
+msgstr "Für Nummern aus diesem Land sind keine SMS verfügbar."
+
+msgid "This number cannot be used."
+msgstr "Diese Nummer kann nicht verwendet werden."
 
 msgid "This number is already verified on your account."
 msgstr "Diese Nummer ist in deinem Konto bereits verifiziert."
@@ -6763,6 +6794,16 @@ msgid ""
 msgstr ""
 "Deine Nummer ist für SMS von {sender} verifiziert. Es können Gebühren "
 "anfallen. Antworte STOP zum Abmelden, HELP für Hilfe."
+
+msgid "This number is already attached to another account."
+msgstr "Diese Nummer ist bereits mit einem anderen Konto verknüpft."
+
+msgid ""
+"This number has opted out of texts (replied STOP); it can't be re-added by a "
+"host."
+msgstr ""
+"Diese Nummer hat SMS abbestellt (STOP geantwortet) und kann von einem "
+"Veranstalter nicht erneut hinzugefügt werden."
 
 msgid "Telegram integration is not enabled."
 msgstr "Die Telegram-Integration ist nicht aktiviert."

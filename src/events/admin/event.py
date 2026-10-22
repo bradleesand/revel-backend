@@ -238,6 +238,20 @@ class EventTokenAdmin(ModelAdmin, UserLinkMixin, EventLinkMixin):  # type: ignor
         return f"{obj.uses} / ∞"
 
 
+@admin.register(models.GuestAccessLink)
+class GuestAccessLinkAdmin(ModelAdmin, UserLinkMixin, EventLinkMixin):  # type: ignore[misc]
+    """Admin for the texted RSVP links of phone-only guests."""
+
+    list_display = ["code", "user_link", "event_link", "uses", "last_used_at", "expires_at", "created_at"]
+    list_select_related = ["event", "user"]
+    list_filter = [("event", AutocompleteSelectFilter), "expires_at", "created_at"]
+    list_filter_submit = True
+    search_fields = ["code", "user__email", "user__phone_number", "event__name"]
+    readonly_fields = ["code", "uses", "last_used_at", "created_at", "updated_at"]
+    autocomplete_fields = ["user", "event"]
+    ordering = ["-created_at"]
+
+
 @admin.register(models.EventInvitationRequest)
 class EventInvitationRequestAdmin(ModelAdmin, UserLinkMixin, EventLinkMixin):  # type: ignore[misc]
     """Admin for EventInvitationRequest model."""

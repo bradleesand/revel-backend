@@ -12,6 +12,8 @@ from ninja.errors import HttpError
 from accounts.models import RevelUser
 from events.models import Event, EventInvitation, PendingEventInvitation, TicketTier
 from events.schema import DirectInvitationCreateSchema
+from events.service import guest as guest_service
+from events.service import guest_links
 from events.utils import get_invitation_message
 
 
@@ -20,10 +22,12 @@ def create_direct_invitations(
     event: Event,
     invitation_data: DirectInvitationCreateSchema,
 ) -> dict[str, int]:
-    """Create direct invitations for a list of email addresses.
+    """Create direct invitations for a list of email addresses and/or phone numbers.
 
     For existing users, creates EventInvitation objects.
-    For non-existing users, creates PendingEventInvitation objects.
+    For non-existing emails, creates PendingEventInvitation objects.
+    For phone numbers, creates (or reuses) phone-only guest users with a guest access link
+    and a real EventInvitation; the invitation notification goes out as a text.
 
     Args:
         event: The event to invite people to.
@@ -55,6 +59,10 @@ def create_direct_invitations(
     invitation_fields = _get_invitation_fields(invitation_data)
     created_invitations = 0
     pending_invitations = 0
+    phone_invitations = 0
+
+    # Resolve every phone number first so one bad number fails the request before anything is created.
+    phone_users = [guest_service.get_or_create_phone_guest(number) for number in invitation_data.phone_numbers]
 
     for email_str in invitation_data.emails:
         email = str(email_str).strip().lower()
@@ -69,12 +77,25 @@ def create_direct_invitations(
             if _create_or_update_pending_invitation(event, email, fields, tiers):
                 pending_invitations += 1
 
+    seen_phone_users: set[UUID] = set()
+    for user in phone_users:
+        if user.pk in seen_phone_users:
+            continue
+        seen_phone_users.add(user.pk)
+        # The link must exist before the invitation's post-commit notification renders the SMS.
+        guest_links.get_or_create_guest_link(user, event)
+        fields = _with_default_message(invitation_fields, user.get_display_name(), event)
+        if _create_or_update_event_invitation(event, user, fields, tiers):
+            created_invitations += 1
+            phone_invitations += 1
+
     # Note: Notifications are sent automatically via Django signals
     # (see notifications/signals/invitation.py)
 
     return {
         "created_invitations": created_invitations,
         "pending_invitations": pending_invitations,
+        "phone_invitations": phone_invitations,
         "total_invited": created_invitations + pending_invitations,
     }
 

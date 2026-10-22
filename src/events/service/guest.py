@@ -89,6 +89,48 @@ def get_or_create_guest_user(email: str, first_name: str = "", last_name: str = 
     return existing_user
 
 
+def get_or_create_phone_guest(phone_number: str, first_name: str = "", last_name: str = "") -> RevelUser:
+    """Get the user holding ``phone_number`` or mint a phone-only guest for it.
+
+    Phone-only guests are regular guest users keyed by a synthetic address
+    (``sms.synthetic_email``) with the number pre-verified by the host. Any existing user
+    with that number — guest or not — is returned as-is (their preferences are left alone).
+
+    Raises:
+        HttpError: 400 for an invalid, unsupported or banned number, or when phone-only
+            users are not configured on this instance.
+    """
+    from django.conf import settings
+
+    from sms import synthetic_email
+    from sms.service import enable_sms_in_preferences, validate_recipient_number
+
+    if not settings.FEATURE_SMS or not synthetic_email.enabled():
+        raise HttpError(400, str(_("Inviting by phone number is not enabled on this instance.")))
+    number = validate_recipient_number(phone_number)
+    existing = RevelUser.objects.filter(phone_number=number).first()
+    if existing is not None:
+        return existing
+
+    email = synthetic_email.email_for_phone(number)
+    user = RevelUser.objects.create(
+        username=email,
+        email=email,
+        first_name=first_name,
+        last_name=last_name,
+        guest=True,
+        email_verified=False,
+        is_active=True,
+        password=make_password(None),
+        phone_number=number,
+        phone_verified_at=timezone.now(),
+        phone_verification_source=RevelUser.PhoneVerificationSource.HOST,
+    )
+    enable_sms_in_preferences(user)
+    logger.info("phone_guest_user_created", user_id=str(user.id))
+    return user
+
+
 def claim_invitation_link(user: RevelUser, event: models.Event, event_token: models.EventToken | None) -> None:
     """Claim an invitation link carried by a guest request, if it is for this event.
 

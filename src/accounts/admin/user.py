@@ -183,7 +183,7 @@ class RevelUserAdmin(UserAdmin, ModelAdmin):  # type: ignore[type-arg,misc]
                     ("username", "email"),
                     ("first_name", "last_name"),
                     ("preferred_name", "pronouns"),
-                    "phone_number",
+                    ("phone_number", "phone_verified_at", "phone_verification_source"),
                     "language",
                     "bio",
                 )

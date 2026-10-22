@@ -143,6 +143,9 @@ class FeaturesSchema(Schema):
     organization_creation: bool
     telegram: bool
     sms: bool
+    #: SMS is on *and* ``SMS_ONLY_EMAIL_DOMAIN`` is set: hosts can invite by phone number and
+    #: people without an account become phone-only guests (see architecture/notifications.md).
+    sms_phone_guests: bool
     llm_evaluation: bool
     referral_applications: bool
     #: Whether the OAuth 2.1 / OIDC provider is mounted, so clients can hide the developer

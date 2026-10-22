@@ -25,7 +25,12 @@ def test_status_initially_empty(auth_client: Client) -> None:
     response = auth_client.get(f"{BASE}/status")
 
     assert response.status_code == 200
-    assert response.json() == {"phone_number": None, "verified": False, "pending_verification": False}
+    assert response.json() == {
+        "phone_number": None,
+        "verified": False,
+        "verification_source": None,
+        "pending_verification": False,
+    }
 
 
 def test_full_verification_flow(
@@ -39,14 +44,24 @@ def test_full_verification_flow(
     code = PhoneVerification.objects.get(user=user).code
 
     status = auth_client.get(f"{BASE}/status").json()
-    assert status == {"phone_number": None, "verified": False, "pending_verification": True}
+    assert status == {
+        "phone_number": None,
+        "verified": False,
+        "verification_source": None,
+        "pending_verification": True,
+    }
 
     with django_capture_on_commit_callbacks(execute=True):
         response = auth_client.post(
             f"{BASE}/verify", {"code": f"{code[:3]} {code[3:]}"}, content_type="application/json"
         )
     assert response.status_code == 200, response.json()
-    assert response.json() == {"phone_number": "+1••••••4567", "verified": True, "pending_verification": False}
+    assert response.json() == {
+        "phone_number": "+1••••••4567",
+        "verified": True,
+        "verification_source": "self",
+        "pending_verification": False,
+    }
     assert SmsLog.objects.filter(purpose=SmsLog.Purpose.CONFIRMATION).exists()
 
     response = auth_client.delete(f"{BASE}")

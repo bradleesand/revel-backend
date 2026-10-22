@@ -12,6 +12,7 @@ from accounts.utils.email_normalization import (
     normalize_email_for_matching,
     normalize_telegram_for_matching,
 )
+from accounts.validators import normalize_phone_number
 
 logger = structlog.get_logger(__name__)
 
@@ -49,6 +50,19 @@ def is_telegram_globally_banned(username: str) -> bool:
         ban_type=GlobalBan.BanType.TELEGRAM,
         normalized_value=normalized,
     ).exists()
+
+
+def is_phone_globally_banned(number: str) -> bool:
+    """Check if a phone number is globally banned.
+
+    Args:
+        number: Phone number (any formatting; normalized before matching).
+
+    Returns:
+        True if the number is banned.
+    """
+    normalized = normalize_phone_number(number)
+    return GlobalBan.objects.filter(ban_type=GlobalBan.BanType.PHONE, normalized_value=normalized).exists()
 
 
 def deactivate_user_for_ban(user: RevelUser, reason: str) -> None:
@@ -126,6 +140,23 @@ def process_email_ban(ban: GlobalBan) -> None:
 
 
 @transaction.atomic
+def process_phone_ban(ban: GlobalBan) -> None:
+    """Process a phone ban: deactivate every user holding that number (phone guests included).
+
+    Args:
+        ban: The GlobalBan instance (PHONE type).
+    """
+    normalized = ban.normalized_value or normalize_phone_number(ban.value)
+    users = list(RevelUser.objects.filter(phone_number=normalized))
+    if not users:
+        logger.info("phone_ban_no_user_found", ban_id=str(ban.id), value=ban.value)
+        return
+    GlobalBan.objects.filter(id=ban.id).update(user=users[0])
+    for user in users:
+        deactivate_user_for_ban(user, reason=ban.reason)
+    logger.info("phone_ban_processed", ban_id=str(ban.id), users=len(users))
+
+
 def process_telegram_ban(ban: GlobalBan) -> None:
     """Process a Telegram ban: find and deactivate the matching user.
 

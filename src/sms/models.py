@@ -97,3 +97,34 @@ class SmsLog(TimeStampedModel):
 
     def __str__(self) -> str:
         return f"{self.purpose} to {self.to} ({self.segments} seg)"
+
+
+class SmsGatewayEvent(TimeStampedModel):
+    """Log of every verified inbound webhook from the SMS gateway app.
+
+    ``event_id`` (the gateway's own id) is the idempotency token: the row is inserted
+    before the handler runs, so a redelivery trips the unique constraint and is skipped.
+    Rows are pruned after ``SMS_GATEWAY_EVENT_RETENTION_DAYS``; the gateway retries a
+    failed delivery for about two days, so pruned ids can't be legitimately redelivered.
+    ``system:ping`` rows double as the gateway's "last seen" record for the health task.
+    """
+
+    class Outcome(models.TextChoices):
+        PROCESSING = "processing", "Processing"
+        HANDLED = "handled", "Handled"
+        UNHANDLED = "unhandled", "Unhandled"
+
+    id = models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True)
+    event_id = models.CharField(max_length=64, unique=True)
+    event_type = models.CharField(max_length=40, db_index=True)
+    device_id = models.CharField(max_length=64, blank=True)
+    payload = models.JSONField(default=dict, blank=True)
+    outcome = models.CharField(max_length=16, choices=Outcome.choices, default=Outcome.PROCESSING)
+
+    class Meta:
+        verbose_name = "SMS gateway event"
+        verbose_name_plural = "SMS gateway events"
+        indexes = [models.Index(fields=["event_type", "created_at"])]
+
+    def __str__(self) -> str:
+        return f"{self.event_type} {self.event_id}"

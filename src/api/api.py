@@ -50,7 +50,7 @@ from oauth.controllers import OAUTH_CONTROLLERS
 from oauth.utils import oauth_provider_enabled
 from polls.controllers import POLL_CONTROLLERS
 from questionnaires.controllers import QuestionnaireFileController
-from sms.controllers import SmsController
+from sms.controllers import SmsController, SmsGatewayWebhookController
 from telegram.controllers import TelegramController
 from wallet.controllers import MembershipWalletController, MembershipWalletSignedController, TicketWalletController
 
@@ -133,6 +133,7 @@ def _get_features(site: SiteSettings) -> FeaturesSchema:
         organization_creation=settings.FEATURE_ORGANIZATION_CREATION,
         telegram=settings.FEATURE_TELEGRAM,
         sms=settings.FEATURE_SMS,
+        sms_phone_guests=bool(settings.FEATURE_SMS and settings.SMS_ONLY_EMAIL_DOMAIN),
         llm_evaluation=settings.FEATURE_LLM_EVALUATION,
         referral_applications=site.referral_applications_enabled,
         oauth_provider=oauth_provider_enabled(),
@@ -216,6 +217,7 @@ api.register_controllers(
     # Telegram controllers
     TelegramController,
     SmsController,
+    SmsGatewayWebhookController,
     # Wallet controllers
     TicketWalletController,
     MembershipWalletController,

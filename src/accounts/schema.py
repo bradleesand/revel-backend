@@ -112,7 +112,17 @@ class MemberUserSchema(ProfilePictureSchemaMixin, ModelSchema):
 
     class Meta:
         model = RevelUser
-        fields = ["id", "email", "phone_number", "preferred_name", "pronouns", "first_name", "last_name"]
+        fields = [
+            "id",
+            "email",
+            "phone_number",
+            "phone_verified_at",
+            "phone_verification_source",
+            "preferred_name",
+            "pronouns",
+            "first_name",
+            "last_name",
+        ]
 
 
 class TOTPProvisioningUriSchema(Schema):

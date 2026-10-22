@@ -9,6 +9,7 @@ from django.dispatch import receiver
 
 from common.models import SiteSettings
 from events.models import EventInvitation, EventInvitationRequest, PendingEventInvitation
+from events.service import guest_links
 from events.tasks import build_attendee_visibility_flags
 from notifications.enums import NotificationType
 from notifications.service.notification_helpers import format_event_datetime, notify_org_staff
@@ -37,11 +38,17 @@ def handle_invitation_save(
         frontend_base_url = SiteSettings.get_solo().frontend_base_url
         frontend_url = f"{frontend_base_url}/events/{event.id}"
 
+        # A phone-only guest can't log in; their texted guest link is the RSVP entry point.
+        extra: dict[str, str] = {}
+        if link := guest_links.guest_link_for(instance.user, event.id):
+            extra["rsvp_url"] = guest_links.guest_link_url(link)
+
         notification_requested.send(
             sender=sender,
             user=instance.user,
             notification_type=NotificationType.INVITATION_RECEIVED,
             context={
+                **extra,
                 "invitation_id": str(instance.id),
                 "event_id": str(event.id),
                 "event_name": event.name,

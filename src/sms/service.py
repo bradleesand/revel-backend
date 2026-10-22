@@ -13,6 +13,7 @@ from django.utils.translation import gettext as _
 from ninja.errors import HttpError
 
 from accounts.models import RevelUser
+from notifications.enums import DeliveryChannel
 from sms.models import PhoneVerification, SmsLog, SmsOptOut
 from sms.schema import PhoneStatusSchema
 from sms.utils import is_e164, mask_phone_number, normalize_phone_number
@@ -57,18 +58,34 @@ def segments_sent_this_month() -> int:
 # ==================== Phone verification ====================
 
 
-def _validated_number(raw: str) -> str:
-    """Normalise and validate a user-supplied number for verification.
+def validate_recipient_number(raw: str) -> str:
+    """Normalise and validate a number texts may go to (verification, host override, phone invites).
 
     Raises:
-        HttpError: 400 when not E.164 or outside ``SMS_ALLOWED_COUNTRY_PREFIXES``.
+        HttpError: 400 when not E.164, outside ``SMS_ALLOWED_COUNTRY_PREFIXES`` or globally banned.
     """
+    from accounts.service.global_ban_service import is_phone_globally_banned
+
     number = normalize_phone_number(raw)
     if not is_e164(number):
         raise HttpError(400, str(_("Enter the number in international format, e.g. +15551234567.")))
     if not any(number.startswith(prefix) for prefix in settings.SMS_ALLOWED_COUNTRY_PREFIXES):
-        raise HttpError(400, str(_("SMS verification is not available for numbers in that country.")))
+        raise HttpError(400, str(_("Texts are not available for numbers in that country.")))
+    if is_phone_globally_banned(number):
+        raise HttpError(400, str(_("This number cannot be used.")))
     return number
+
+
+_validated_number = validate_recipient_number  # backwards-compatible alias
+
+
+def enable_sms_in_preferences(user: RevelUser) -> bool:
+    """Turn the SMS channel on for ``user`` (delivery is still limited to ``SMS_ELIGIBLE_TYPES``)."""
+    prefs = user.notification_preferences
+    if prefs.enable_channel(DeliveryChannel.SMS):
+        prefs.save(update_fields=["enabled_channels", "notification_type_settings", "updated_at"])
+        return True
+    return False
 
 
 def request_code(user: RevelUser, raw_number: str) -> None:
@@ -132,7 +149,8 @@ def verify_code(user: RevelUser, code: str) -> RevelUser:
     with transaction.atomic():
         user.phone_number = verification.phone_number
         user.phone_verified_at = now
-        user.save(update_fields=["phone_number", "phone_verified_at"])
+        user.phone_verification_source = RevelUser.PhoneVerificationSource.SELF
+        user.save(update_fields=["phone_number", "phone_verified_at", "phone_verification_source"])
         verification.used_at = now
         verification.save(update_fields=["used_at", "updated_at"])
 
@@ -153,11 +171,50 @@ def verify_code(user: RevelUser, code: str) -> RevelUser:
 def remove_phone(user: RevelUser) -> None:
     """Drop the user's number (verified or not) and any pending verification."""
     PhoneVerification.objects.filter(user=user).delete()
-    if user.phone_number or user.phone_verified_at:
+    if user.phone_number or user.phone_verified_at or user.phone_verification_source:
         user.phone_number = None
         user.phone_verified_at = None
-        user.save(update_fields=["phone_number", "phone_verified_at"])
+        user.phone_verification_source = ""
+        user.save(update_fields=["phone_number", "phone_verified_at", "phone_verification_source"])
     logger.info("sms_phone_removed", user_id=str(user.id))
+
+
+# ==================== Host override ====================
+
+
+def set_phone_by_host(user: RevelUser, raw_number: str, *, actor: RevelUser) -> RevelUser:
+    """An organizer sets ``user``'s number directly: verified on the spot, no code, no consent text.
+
+    Meant for hosts adding people they know. The number is still validated, allow-listed
+    and checked against bans and the opt-out list; SMS is switched on in the user's
+    preferences so eligible notifications actually go out. Nothing is texted.
+
+    Raises:
+        HttpError: 400 for an invalid/unsupported/banned/opted-out number or one another
+            account already holds.
+    """
+    number = validate_recipient_number(raw_number)
+    if RevelUser.objects.filter(phone_number=number).exclude(pk=user.pk).exists():
+        raise HttpError(400, str(_("This number is already attached to another account.")))
+    if is_opted_out(number):
+        raise HttpError(
+            400, str(_("This number has opted out of texts (replied STOP); it can't be re-added by a host."))
+        )
+
+    with transaction.atomic():
+        PhoneVerification.objects.filter(user=user).delete()
+        user.phone_number = number
+        user.phone_verified_at = timezone.now()
+        user.phone_verification_source = RevelUser.PhoneVerificationSource.HOST
+        user.save(update_fields=["phone_number", "phone_verified_at", "phone_verification_source"])
+        enable_sms_in_preferences(user)
+    logger.info(
+        "sms_phone_set_by_host",
+        user_id=str(user.id),
+        actor_id=str(actor.id),
+        phone_number=mask_phone_number(number),
+    )
+    return user
 
 
 def phone_status(user: RevelUser) -> PhoneStatusSchema:
@@ -166,5 +223,6 @@ def phone_status(user: RevelUser) -> PhoneStatusSchema:
     return PhoneStatusSchema(
         phone_number=mask_phone_number(user.phone_number) if user.phone_number else None,
         verified=user.phone_verified_at is not None,
+        verification_source=user.phone_verification_source or None,
         pending_verification=pending is not None and pending.is_usable(),
     )

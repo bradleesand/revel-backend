@@ -66,7 +66,19 @@ class RevelUser(ExifStripMixin, StripeConnectMixin, AbstractUser):
         max_length=20, unique=True, null=True, blank=True, validators=[validate_phone_number], help_text="Phone number"
     )
     phone_verified_at = models.DateTimeField(
-        null=True, blank=True, help_text="When phone_number was confirmed by SMS code; SMS delivery requires it"
+        null=True, blank=True, help_text="When phone_number was confirmed; SMS delivery requires it"
+    )
+
+    class PhoneVerificationSource(models.TextChoices):
+        SELF = "self", "Verified by SMS code"
+        HOST = "host", "Set by an organizer"
+
+    phone_verification_source = models.CharField(
+        max_length=8,
+        choices=PhoneVerificationSource.choices,
+        blank=True,
+        default="",
+        help_text="How phone_verified_at was established: the user entered a texted code, or an organizer set it",
     )
     preferred_name = models.CharField(db_index=True, max_length=255, blank=True, help_text="Preferred name")
     pronouns = models.CharField(max_length=100, blank=True, help_text="Pronouns")
@@ -767,6 +779,7 @@ class GlobalBan(TimeStampedModel):
         EMAIL = "email", "Specific Email"
         DOMAIN = "domain", "Email Domain"
         TELEGRAM = "telegram", "Telegram Username"
+        PHONE = "phone", "Phone Number"
 
     ban_type = models.CharField(max_length=20, choices=BanType.choices, db_index=True)
     value = models.CharField(max_length=255, db_index=True, help_text="Original input value")
@@ -811,4 +824,6 @@ class GlobalBan(TimeStampedModel):
             self.normalized_value = normalize_domain_for_matching(self.value)
         elif self.ban_type == self.BanType.TELEGRAM:
             self.normalized_value = normalize_telegram_for_matching(self.value)
+        elif self.ban_type == self.BanType.PHONE:
+            self.normalized_value = normalize_phone_number(self.value)
         super().save(*args, **kwargs)

@@ -292,6 +292,11 @@ UNFOLD = {
                         "link": reverse_lazy("admin:events_eventtoken_changelist"),
                     },
                     {
+                        "title": _("Guest Links"),
+                        "icon": "link",
+                        "link": reverse_lazy("admin:events_guestaccesslink_changelist"),
+                    },
+                    {
                         "title": _("Potluck Items"),
                         "icon": "lunch_dining",
                         "link": reverse_lazy("admin:events_potluckitem_changelist"),
@@ -529,6 +534,11 @@ UNFOLD = {
                         "title": _("Phone Verifications"),
                         "icon": "phonelink_ring",
                         "link": reverse_lazy("admin:sms_phoneverification_changelist"),
+                    },
+                    {
+                        "title": _("SMS Gateway Events"),
+                        "icon": "webhook",
+                        "link": reverse_lazy("admin:sms_smsgatewayevent_changelist"),
                     },
                 ],
             },

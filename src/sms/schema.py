@@ -25,4 +25,5 @@ class PhoneStatusSchema(Schema):
 
     phone_number: str | None = Field(None, description="Masked, e.g. +1••••••4567")
     verified: bool
+    verification_source: str | None = Field(None, description="'self' (texted code) or 'host' (set by an organizer)")
     pending_verification: bool = Field(False, description="A code has been sent and can still be entered")
