@@ -65,6 +65,9 @@ class EventInvitationListSchema(Schema):
 
     id: UUID
     user: MinimalRevelUserSchema
+    phone_guest_number: str | None = Field(
+        None, description="Masked mobile number when the invitee is a phone-only guest (their email is synthetic)."
+    )
     tiers: list[TicketTierSchema] = Field(default_factory=list)
     waives_questionnaire: bool
     waives_purchase: bool
@@ -74,6 +77,17 @@ class EventInvitationListSchema(Schema):
     waives_apply_deadline: bool
     custom_message: str | None = None
     created_at: AwareDatetime
+
+    @staticmethod
+    def resolve_phone_guest_number(obj: models.EventInvitation) -> str | None:
+        """Masked number for phone-only guests so the admin list shows something readable."""
+        from sms.synthetic_email import is_sms_only_email
+        from sms.utils import mask_phone_number
+
+        user = obj.user
+        if user.phone_number and is_sms_only_email(user.email):
+            return str(mask_phone_number(user.phone_number))
+        return None
 
 
 class MyEventInvitationSchema(Schema):

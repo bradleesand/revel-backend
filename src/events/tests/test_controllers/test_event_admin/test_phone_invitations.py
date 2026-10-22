@@ -48,3 +48,19 @@ class TestInviteByPhoneEndpoint:
         )
         assert response.status_code == 400
         assert "not enabled" in response.json()["detail"]
+
+    def test_list_shows_masked_number_for_phone_guests(
+        self, organization_owner_client: Client, rsvp_event: Event
+    ) -> None:
+        url = reverse("api:create_direct_invitations", kwargs={"event_id": rsvp_event.pk})
+        organization_owner_client.post(
+            url, data=orjson.dumps({"phone_numbers": [PHONE]}), content_type="application/json"
+        )
+
+        response = organization_owner_client.get(
+            reverse("api:list_event_invitations", kwargs={"event_id": rsvp_event.pk})
+        )
+
+        assert response.status_code == 200, response.content
+        [row] = response.json()["results"]
+        assert row["phone_guest_number"] == "+1••••••0001"
