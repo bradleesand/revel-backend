@@ -90,7 +90,7 @@ def merge_users(source: RevelUser, target: RevelUser, *, reason: str) -> MergeRe
 
     report = MergeReport()
     for rel in _user_relations():
-        model = t.cast(type[Model], rel.related_model)
+        model = rel.related_model
         fk: t.Any = rel.field  # the FK/O2O on the related model that points at the user
         label = model._meta.label
         manager = model._base_manager
