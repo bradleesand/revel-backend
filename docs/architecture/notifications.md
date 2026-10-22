@@ -280,8 +280,15 @@ would collide). Nothing is ever mailed to it: `email_policy.may_email` / `suppre
 refuse it, and with `SMS_ONLY_EMAIL_DOMAIN` set the configured `EMAIL_BACKEND` is wrapped by
 `sms.email_backend.SmsOnlyFilteringBackend` (the real backend moves to
 `SMS_INNER_EMAIL_BACKEND`), which drops such recipients from every `EmailMessage` — account
-mail, guest confirmations, invoices included. Merging a phone guest into a later real account
-is not automated yet: the number's uniqueness surfaces the collision at verification time.
+mail, guest confirmations, invoices included.
+
+**Merging into a real account.** When someone who was invited by text later registers and
+verifies that same number (or a host sets it on their account), the phone-only guest is
+absorbed: `accounts.service.user_merge.merge_users` re-points every relation onto the real
+account (RSVPs, invitations, guest links, tickets, notifications, ...), lets the target's row
+win on unique collisions (an RSVP to the same event, preferences), and deletes the guest. The
+texted `/g/<code>` link keeps working for the real account. Only a *phone-only guest* is
+absorbed this way; a number held by a real account still blocks verification.
 
 Delivery runs through `sms.tasks.send_sms_task`, the single send path for notifications,
 verification codes and confirmations. It enforces the `SmsOptOut` list (fed by STOP replies

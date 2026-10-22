@@ -79,6 +79,43 @@ def validate_recipient_number(raw: str) -> str:
 _validated_number = validate_recipient_number  # backwards-compatible alias
 
 
+def phone_guest_holding(number: str, *, exclude: RevelUser | None = None) -> RevelUser | None:
+    """The phone-only guest currently keyed on ``number``, if that is who holds it.
+
+    A phone-only guest is a ``guest`` user whose email is synthetic (``sms.synthetic_email``).
+    Such a holder does not block another account from claiming the number: verifying it
+    (or a host setting it) merges the guest into that account instead.
+    """
+    from sms.synthetic_email import is_sms_only_email
+
+    qs = RevelUser.objects.filter(phone_number=number)
+    if exclude is not None:
+        qs = qs.exclude(pk=exclude.pk)
+    holder = qs.first()
+    if holder is not None and holder.guest and is_sms_only_email(holder.email):
+        return holder
+    return None
+
+
+def _reject_if_number_taken(number: str, user: RevelUser) -> None:
+    """400 when a *real* account already holds ``number`` (a phone guest will be merged, not rejected)."""
+    other = RevelUser.objects.filter(phone_number=number).exclude(pk=user.pk).first()
+    if other is not None and phone_guest_holding(number, exclude=user) is None:
+        raise HttpError(400, str(_("This number is already in use.")))
+
+
+def absorb_phone_guest(number: str, *, into: RevelUser, reason: str) -> bool:
+    """Merge the phone-only guest keyed on ``number`` (if any) into ``into``. Returns True when it happened."""
+    from accounts.service.user_merge import merge_users
+
+    guest = phone_guest_holding(number, exclude=into)
+    if guest is None:
+        return False
+    merge_users(guest, into, reason=reason)
+    logger.info("phone_guest_absorbed", user_id=str(into.id), phone_number=mask_phone_number(number), reason=reason)
+    return True
+
+
 def enable_sms_in_preferences(user: RevelUser) -> bool:
     """Turn the SMS channel on for ``user`` (delivery is still limited to ``SMS_ELIGIBLE_TYPES``)."""
     prefs = user.notification_preferences
@@ -101,8 +138,7 @@ def request_code(user: RevelUser, raw_number: str) -> None:
 
     if user.phone_number == number and user.phone_verified_at:
         raise HttpError(400, str(_("This number is already verified on your account.")))
-    if RevelUser.objects.filter(phone_number=number).exclude(pk=user.pk).exists():
-        raise HttpError(400, str(_("This number is already in use.")))
+    _reject_if_number_taken(number, user)
     if is_opted_out(number):
         raise HttpError(400, str(_("This number has opted out of texts. Reply START to our number first.")))
 
@@ -147,12 +183,17 @@ def verify_code(user: RevelUser, code: str) -> RevelUser:
 
     now = timezone.now()
     with transaction.atomic():
+        # Invited by text before registering? The phone-only guest row (and its RSVPs,
+        # invitations, guest links, ...) moves onto this account; SMS stays enabled.
+        merged = absorb_phone_guest(verification.phone_number, into=user, reason="phone_verified")
         user.phone_number = verification.phone_number
         user.phone_verified_at = now
         user.phone_verification_source = RevelUser.PhoneVerificationSource.SELF
         user.save(update_fields=["phone_number", "phone_verified_at", "phone_verification_source"])
         verification.used_at = now
         verification.save(update_fields=["used_at", "updated_at"])
+        if merged:
+            enable_sms_in_preferences(user)
 
     # Carrier/TCPA expectation: confirm the opt-in and state how to leave.
     with translation.override(getattr(user, "language", settings.LANGUAGE_CODE)):
@@ -194,7 +235,8 @@ def set_phone_by_host(user: RevelUser, raw_number: str, *, actor: RevelUser) -> 
             account already holds.
     """
     number = validate_recipient_number(raw_number)
-    if RevelUser.objects.filter(phone_number=number).exclude(pk=user.pk).exists():
+    other = RevelUser.objects.filter(phone_number=number).exclude(pk=user.pk).first()
+    if other is not None and phone_guest_holding(number, exclude=user) is None:
         raise HttpError(400, str(_("This number is already attached to another account.")))
     if is_opted_out(number):
         raise HttpError(
@@ -202,6 +244,7 @@ def set_phone_by_host(user: RevelUser, raw_number: str, *, actor: RevelUser) -> 
         )
 
     with transaction.atomic():
+        absorb_phone_guest(number, into=user, reason="host_override")
         PhoneVerification.objects.filter(user=user).delete()
         user.phone_number = number
         user.phone_verified_at = timezone.now()
