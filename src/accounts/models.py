@@ -160,8 +160,20 @@ class RevelUser(ExifStripMixin, StripeConnectMixin, AbstractUser):
         return self.get_display_name()
 
     def get_display_name(self) -> str:
-        """Returns the user's preferred name, or their full name as a fallback."""
-        return self.preferred_name or self.get_full_name() or self.username
+        """Returns the user's preferred name, or their full name as a fallback.
+
+        A phone-only guest (synthetic ``<digits>@<SMS_ONLY_EMAIL_DOMAIN>`` address, no name)
+        shows as their masked number rather than the raw address, which would print the
+        whole number in the clear.
+        """
+        if name := (self.preferred_name or self.get_full_name()):
+            return str(name)
+        from sms.synthetic_email import is_sms_only_email
+        from sms.utils import mask_phone_number
+
+        if self.phone_number and is_sms_only_email(self.email):
+            return str(mask_phone_number(self.phone_number))
+        return str(self.username)
 
 
 class UserDataExport(TimeStampedModel):

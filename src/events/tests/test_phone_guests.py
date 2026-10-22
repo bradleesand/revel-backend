@@ -54,6 +54,12 @@ class TestPhoneGuestUsers:
         assert DeliveryChannel.SMS in user.notification_preferences.enabled_channels
         assert user.first_name == "Sam"
 
+    def test_display_name_is_the_masked_number_not_the_synthetic_email(self) -> None:
+        user = guest_service.get_or_create_phone_guest(PHONE)
+        assert user.get_display_name() == "+1••••••0001"
+        user.first_name = "Sam"
+        assert user.get_display_name() == "Sam"
+
     def test_reuses_existing_holder_of_the_number(self, user: RevelUser) -> None:
         user.phone_number = E164
         user.save(update_fields=["phone_number"])
