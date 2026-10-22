@@ -72,6 +72,7 @@ class RevelUser(ExifStripMixin, StripeConnectMixin, AbstractUser):
     class PhoneVerificationSource(models.TextChoices):
         SELF = "self", "Verified by SMS code"
         HOST = "host", "Set by an organizer"
+        LINK = "link", "Proved by a texted invitation link"
 
     phone_verification_source = models.CharField(
         max_length=8,

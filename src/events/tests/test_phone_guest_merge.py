@@ -126,3 +126,72 @@ class TestMergeUsers:
         assert report.dropped["notifications.NotificationPreference"] == 1
         assert report.dropped["events.GeneralUserPreferences"] == 1
         assert not RevelUser.objects.filter(pk=phone_guest.pk).exists()
+
+
+class TestRegistrationLinksPhone:
+    """Signing up from the texted link (or with a typed number) connects the phone guest."""
+
+    def _register(self, client: Client, **extra: t.Any) -> t.Any:
+        import orjson
+
+        body = {
+            "email": "newfriend@example.com",
+            "password1": "Str0ng!Passw0rd-e2e",
+            "password2": "Str0ng!Passw0rd-e2e",
+            "accept_toc_and_privacy": True,
+            **extra,
+        }
+        return client.post(reverse("api:register-account"), data=orjson.dumps(body), content_type="application/json")
+
+    def test_guest_link_code_merges_and_verifies_on_the_spot(
+        self, phone_guest: RevelUser, rsvp_event: Event, client: Client
+    ) -> None:
+        code = GuestAccessLink.objects.get(user=phone_guest).code
+        guest_id = phone_guest.pk
+
+        response = self._register(client, guest_link_code=code)
+
+        assert response.status_code == 201, response.content
+        user = RevelUser.objects.get(email="newfriend@example.com")
+        assert not RevelUser.objects.filter(pk=guest_id).exists()
+        assert user.phone_number == PHONE and user.phone_verified_at is not None
+        assert user.phone_verification_source == RevelUser.PhoneVerificationSource.LINK
+        assert EventRSVP.objects.get(event=rsvp_event, user=user).status == "yes"
+        assert GuestAccessLink.objects.get(code=code).user == user
+        assert DeliveryChannel.SMS in user.notification_preferences.enabled_channels
+        assert not PhoneVerification.objects.filter(user=user).exists()
+
+    def test_unknown_link_code_is_ignored(self, client: Client) -> None:
+        response = self._register(client, guest_link_code="nope123456")
+        assert response.status_code == 201, response.content
+        user = RevelUser.objects.get(email="newfriend@example.com")
+        assert user.phone_number is None
+
+    def test_typed_number_starts_verification(
+        self, phone_guest: RevelUser, client: Client, django_capture_on_commit_callbacks: t.Any
+    ) -> None:
+        from sms.models import SmsLog
+
+        with django_capture_on_commit_callbacks(execute=True):  # the code is texted post-commit
+            response = self._register(client, phone_number="(555) 777-0001")
+
+        assert response.status_code == 201, response.content
+        user = RevelUser.objects.get(email="newfriend@example.com")
+        assert user.phone_number is None  # not claimed until the code is entered
+        verification = PhoneVerification.objects.get(user=user)
+        assert verification.phone_number == PHONE
+        assert SmsLog.objects.filter(to=PHONE, purpose=SmsLog.Purpose.VERIFICATION).exists()
+        assert RevelUser.objects.filter(pk=phone_guest.pk).exists()  # merge waits for the code
+
+        sms_service.verify_code(user, verification.code)
+        assert not RevelUser.objects.filter(pk=phone_guest.pk).exists()
+        user.refresh_from_db()
+        assert user.phone_number == PHONE
+
+    def test_number_held_by_a_real_account_is_rejected_before_creating_the_user(
+        self, client: Client, revel_user_factory: t.Any
+    ) -> None:
+        revel_user_factory(phone_number=PHONE)
+        response = self._register(client, phone_number=PHONE)
+        assert response.status_code == 400
+        assert not RevelUser.objects.filter(email="newfriend@example.com").exists()

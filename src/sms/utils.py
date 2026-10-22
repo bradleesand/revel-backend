@@ -20,9 +20,22 @@ UCS2_SINGLE_SEGMENT = 70
 UCS2_MULTIPART_SEGMENT = 67
 
 
-def normalize_phone_number(raw: str) -> str:
-    """Strip formatting characters; does not validate (see ``is_e164``)."""
-    return re.sub(r"[ \-().]", "", raw.strip())
+def normalize_phone_number(raw: str, *, default_prefix: str | None = None) -> str:
+    """Strip formatting characters and, optionally, infer a missing country code.
+
+    With ``default_prefix`` (e.g. ``"+1"``): a bare national number of 10 digits becomes
+    ``prefix + digits``, and 11 digits that already start with the prefix's own digits
+    become ``"+" + digits``. Anything else is returned as-is. Does not validate (see
+    ``is_e164``).
+    """
+    number = re.sub(r"[ \-().]", "", raw.strip())
+    if default_prefix and number.isdigit():
+        prefix_digits = default_prefix.lstrip("+")
+        if len(number) == 10:
+            return f"{default_prefix}{number}"
+        if len(number) == len(prefix_digits) + 10 and number.startswith(prefix_digits):
+            return f"+{number}"
+    return number
 
 
 def is_e164(number: str) -> bool:

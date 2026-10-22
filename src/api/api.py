@@ -134,6 +134,7 @@ def _get_features(site: SiteSettings) -> FeaturesSchema:
         telegram=settings.FEATURE_TELEGRAM,
         sms=settings.FEATURE_SMS,
         sms_phone_guests=bool(settings.FEATURE_SMS and settings.SMS_ONLY_EMAIL_DOMAIN),
+        sms_default_country_prefix=settings.SMS_DEFAULT_COUNTRY_PREFIX if settings.FEATURE_SMS else "",
         llm_evaluation=settings.FEATURE_LLM_EVALUATION,
         referral_applications=site.referral_applications_enabled,
         oauth_provider=oauth_provider_enabled(),

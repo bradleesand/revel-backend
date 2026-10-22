@@ -87,6 +87,14 @@ def register_user(payload: schema.RegisterUserSchema) -> tuple[RevelUser, str]:
         if not referral_code_obj:
             raise HttpError(422, str(_("Invalid or inactive referral code.")))
 
+    # Validate a typed mobile number before creating anything, so a bad number is a clean 400.
+    registration_phone: str | None = None
+    if payload.phone_number and not payload.guest_link_code and settings.FEATURE_SMS:
+        from sms.service import ensure_number_claimable, validate_recipient_number
+
+        registration_phone = validate_recipient_number(payload.phone_number)
+        ensure_number_claimable(registration_phone)
+
     new_user = RevelUser.objects.create_user(
         username=payload.email,
         email=payload.email,
@@ -95,6 +103,8 @@ def register_user(payload: schema.RegisterUserSchema) -> tuple[RevelUser, str]:
         last_name=payload.last_name,
         is_active=True,  # we use email verification
     )
+
+    _attach_phone_from_registration(new_user, payload.guest_link_code, registration_phone)
 
     if referral_code_obj:
         Referral.objects.create(
@@ -110,6 +120,40 @@ def register_user(payload: schema.RegisterUserSchema) -> tuple[RevelUser, str]:
 
     logger.info("user_registration_completed", user_id=str(new_user.id), email=new_user.email)
     return send_verification_email_for_user(new_user, return_url=payload.return_url)
+
+
+def _attach_phone_from_registration(user: RevelUser, guest_link_code: str | None, phone_number: str | None) -> None:
+    """Link a texted invitation (merge, verified on the spot) or start verifying a typed number.
+
+    The guest link is proof of possession — the text went to that number — so the phone-only
+    guest behind it is absorbed into the new account immediately and the number is marked
+    verified (source ``link``). A typed number is only *claimed*: a code is texted, and the
+    merge happens when it is entered on the profile page (``sms.service.verify_code``).
+    """
+    if not settings.FEATURE_SMS:
+        return
+    from events.service import guest_links
+    from sms.service import absorb_phone_guest, enable_sms_in_preferences, request_code
+
+    if guest_link_code:
+        link = guest_links.claimable_link(guest_link_code)
+        if link is None:
+            logger.warning("registration_guest_link_unusable", user_id=str(user.id))
+            return
+        number = str(link.user.phone_number)
+        with transaction.atomic():
+            absorb_phone_guest(number, into=user, reason="registration_guest_link")
+            user.phone_number = number
+            user.phone_verified_at = timezone.now()
+            user.phone_verification_source = RevelUser.PhoneVerificationSource.LINK
+            user.save(update_fields=["phone_number", "phone_verified_at", "phone_verification_source"])
+            enable_sms_in_preferences(user)
+        logger.info("registration_guest_link_linked", user_id=str(user.id))
+        return
+
+    if phone_number:
+        request_code(user, phone_number)
+        logger.info("registration_phone_code_sent", user_id=str(user.id))
 
 
 def create_verification_token(user: RevelUser) -> str:

@@ -41,6 +41,18 @@ def guest_link_for(user: RevelUser, event_id: t.Any) -> models.GuestAccessLink |
     return models.GuestAccessLink.objects.usable().filter(user=user, event_id=event_id).first()
 
 
+def claimable_link(code: str | None) -> models.GuestAccessLink | None:
+    """A usable link whose user is still a phone-only guest — i.e. one a new account may absorb."""
+    from sms.synthetic_email import is_sms_only_email
+
+    if not code or not settings.FEATURE_SMS:
+        return None
+    link = models.GuestAccessLink.objects.usable().select_related("user").filter(code=code).first()
+    if link is None or not link.user.guest or not is_sms_only_email(link.user.email) or not link.user.phone_number:
+        return None
+    return link
+
+
 def guest_link_url(link: models.GuestAccessLink) -> str:
     """Public URL of the link (short enough for one SMS segment)."""
     return f"{SiteSettings.get_solo().frontend_base_url.rstrip('/')}/g/{link.code}"

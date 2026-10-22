@@ -54,6 +54,12 @@ class TestSetPhoneByHost:
         with pytest.raises(HttpError, match="opted out"):
             service.set_phone_by_host(user, NUMBER, actor=host)
 
+    def test_ten_digit_number_gets_default_prefix(self, user: RevelUser, host: RevelUser, settings: t.Any) -> None:
+        settings.SMS_DEFAULT_COUNTRY_PREFIX = "+1"
+        service.set_phone_by_host(user, "(555) 987-6543", actor=host)
+        user.refresh_from_db()
+        assert user.phone_number == E164
+
     def test_rejects_disallowed_country(self, user: RevelUser, host: RevelUser) -> None:
         with pytest.raises(HttpError, match="not available"):
             service.set_phone_by_host(user, "+44 20 7946 0958", actor=host)

@@ -66,7 +66,7 @@ def validate_recipient_number(raw: str) -> str:
     """
     from accounts.service.global_ban_service import is_phone_globally_banned
 
-    number = normalize_phone_number(raw)
+    number = normalize_phone_number(raw, default_prefix=settings.SMS_DEFAULT_COUNTRY_PREFIX or None)
     if not is_e164(number):
         raise HttpError(400, str(_("Enter the number in international format, e.g. +15551234567.")))
     if not any(number.startswith(prefix) for prefix in settings.SMS_ALLOWED_COUNTRY_PREFIXES):
@@ -97,11 +97,22 @@ def phone_guest_holding(number: str, *, exclude: RevelUser | None = None) -> Rev
     return None
 
 
-def _reject_if_number_taken(number: str, user: RevelUser) -> None:
-    """400 when a *real* account already holds ``number`` (a phone guest will be merged, not rejected)."""
-    other = RevelUser.objects.filter(phone_number=number).exclude(pk=user.pk).first()
-    if other is not None and phone_guest_holding(number, exclude=user) is None:
+def ensure_number_claimable(number: str, *, by: RevelUser | None = None) -> None:
+    """400 when a *real* account already holds ``number`` (a phone guest will be merged, not rejected).
+
+    Args:
+        number: E.164 number being claimed.
+        by: The claiming account, if it exists yet (its own current number never counts).
+    """
+    qs = RevelUser.objects.filter(phone_number=number)
+    if by is not None:
+        qs = qs.exclude(pk=by.pk)
+    other = qs.first()
+    if other is not None and phone_guest_holding(number, exclude=by) is None:
         raise HttpError(400, str(_("This number is already in use.")))
+
+
+_reject_if_number_taken = ensure_number_claimable  # backwards-compatible alias
 
 
 def absorb_phone_guest(number: str, *, into: RevelUser, reason: str) -> bool:
@@ -138,7 +149,7 @@ def request_code(user: RevelUser, raw_number: str) -> None:
 
     if user.phone_number == number and user.phone_verified_at:
         raise HttpError(400, str(_("This number is already verified on your account.")))
-    _reject_if_number_taken(number, user)
+    ensure_number_claimable(number, by=user)
     if is_opted_out(number):
         raise HttpError(400, str(_("This number has opted out of texts. Reply START to our number first.")))
 

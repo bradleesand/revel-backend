@@ -61,3 +61,16 @@ def test_segment_count(text: str, segments: int) -> None:
 def test_mask_phone_number() -> None:
     assert mask_phone_number("+15551234567") == "+1••••••4567"
     assert mask_phone_number("+1555") == "+1555"
+
+
+class TestDefaultCountryPrefix:
+    def test_ten_digits_get_the_prefix(self) -> None:
+        assert normalize_phone_number("(555) 123-4567", default_prefix="+1") == "+15551234567"
+
+    def test_eleven_digits_starting_with_prefix_get_a_plus(self) -> None:
+        assert normalize_phone_number("1 555 123 4567", default_prefix="+1") == "+15551234567"
+
+    def test_international_and_odd_lengths_untouched(self) -> None:
+        assert normalize_phone_number("+44 20 7946 0958", default_prefix="+1") == "+442079460958"
+        assert normalize_phone_number("555-1234", default_prefix="+1") == "5551234"
+        assert normalize_phone_number("5551234567") == "5551234567"  # no prefix configured

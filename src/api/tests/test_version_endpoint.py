@@ -56,6 +56,7 @@ class TestVersionEndpointFeatures:
             "telegram": False,
             "sms": True,
             "sms_phone_guests": False,
+            "sms_default_country_prefix": "+1",
             "llm_evaluation": False,
             "referral_applications": False,
             # Credential presence is the flag (ADR-0008) and the test settings ship no signing
@@ -98,6 +99,7 @@ class TestVersionEndpointFeatures:
             "telegram",
             "sms",
             "sms_phone_guests",
+            "sms_default_country_prefix",
             "llm_evaluation",
             "referral_applications",
             "oauth_provider",

@@ -52,6 +52,9 @@ SMS_OTP_EXPIRATION_MINUTES: int = config("SMS_OTP_EXPIRATION_MINUTES", default=1
 SMS_OTP_MAX_ATTEMPTS: int = config("SMS_OTP_MAX_ATTEMPTS", default=5, cast=int)
 SMS_OTP_RESEND_COOLDOWN_SECONDS: int = config("SMS_OTP_RESEND_COOLDOWN_SECONDS", default=60, cast=int)
 SMS_ALLOWED_COUNTRY_PREFIXES: list[str] = config("SMS_ALLOWED_COUNTRY_PREFIXES", default="+1", cast=Csv())
+# Numbers typed without a country code get this one: 10 bare digits -> "+1" + digits, and
+# 11 digits starting with the prefix's own digits -> "+" + digits. Empty disables inference.
+SMS_DEFAULT_COUNTRY_PREFIX: str = config("SMS_DEFAULT_COUNTRY_PREFIX", default="+1").strip()
 
 # Hard cap on segments sent per calendar month (bill-shock / runaway guard). 0 = unlimited.
 SMS_MONTHLY_LIMIT: int = config("SMS_MONTHLY_LIMIT", default=0, cast=int)

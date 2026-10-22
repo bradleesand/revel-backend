@@ -194,6 +194,23 @@ class RegisterUserSchema(PasswordMixin):
     accept_toc_and_privacy: bool = Field(..., description="Must accept terms of service and privacy policy")
     return_url: VerificationReturnUrl = None
     turnstile_token: str | None = Field(default=None, max_length=2048)
+    guest_link_code: str | None = Field(
+        default=None,
+        max_length=16,
+        description=(
+            "Code from a texted /g/<code> invitation link. Signing up with it merges that phone-only "
+            "guest (RSVPs, invitations) into the new account and marks the number verified: the text "
+            "already proved possession. Requires the SMS feature; an unknown or expired code is ignored."
+        ),
+    )
+    phone_number: str | None = Field(
+        default=None,
+        max_length=20,
+        description=(
+            "Optional mobile number (E.164). A verification code is texted right away; once entered "
+            "on the profile page, any phone-only guest invited at that number is merged into this account."
+        ),
+    )
 
     @field_validator("email")
     @classmethod
